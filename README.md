@@ -1,6 +1,6 @@
 # **NAME**
 
-Good_Turing.R - Calculate probability of unobserved species for molecular dynamics RMSD matrices.
+Good_Turing.R - Application of Good-Turing statistics to quantify convergence of biomolecular simulations.
 
 # **DESCRIPTION**
 
@@ -11,6 +11,24 @@ Windows, Mac and *nix. For more info on availability see [here]
 (http://cran.r-project.org/doc/FAQ/R-FAQ.html#What-machines-does-R-run-on_003f).
 
 The following steps are required in order to run the script :
+
+### 0. Extremely quick start guide 
+
+For a more detailed overview skip this section and begin your reading at 1. If you feel confident read on.
+
+If you already have the R package installed and you work with unix (GNU/Linux-MacOSX) then
+just place the Good_Turing.R program to the directory containing your RMSD matrix and then
+from the unix shell do the following :
+
+1. Go to the directory containing the matrix plus the Good_Turing.R files.
+2. Run R from the console by typing 'R'
+3. Type : source('Good_Turing.R')
+4. For the very first run and if any needed packages are missing you will be given the opportunity
+   to install them on-the-fly. Do install them.
+5. Type the name of the file containing the RMSD matrix when asked.
+6. Hold your breath.
+
+The expected format of the RMSD matrix is described in section 6 below.
 
 ### 1. Obtain and install R
 

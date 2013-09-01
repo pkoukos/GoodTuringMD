@@ -6,7 +6,9 @@ Good_Turing.R - Calculate probability of unobserved species for molecular dynami
 
 Good_Turing.R is an [R](http://www.r-project.org/) script which applies Good-Turing statistics on
 RMSD matrices of macromolecular dynamics simulation trajectories, with the purpose of quantifying
-convergence and/or sufficient sampling. 
+convergence and/or sufficient sampling. It is available for all platforms R runs on, including 
+Windows, Mac and *nix. For more info on availability see [here]
+(http://cran.r-project.org/doc/FAQ/R-FAQ.html#What-machines-does-R-run-on_003f).
 
 The following steps are required in order to run the script :
 
@@ -80,6 +82,9 @@ The following steps are required in order to run the script :
         **                2.138 2.074 2.065 ... 0.000                  **
         **                                                             **
         *****************************************************************
+        
+    Runtime errors associated with bad input are accompanied by a message explaining exactly what is wrong with the
+    data and the above message.
 
 
 # **AUTHOR**

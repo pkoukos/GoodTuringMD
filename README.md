@@ -4,14 +4,82 @@ Good_Turing.R - Calculate probability of unobserved species for molecular dynami
 
 # **DESCRIPTION**
 
-Good_Turing.R is an [R](http://www.r-project.org/) script which applies Good-Turing statistics on an
+Good_Turing.R is an [R](http://www.r-project.org/) script which applies Good-Turing statistics on
 RMSD matrices of macromolecular dynamics simulation trajectories, with the purpose of quantifying
 convergence and/or sufficient sampling. 
 
 The following steps are required in order to run the script :
 
-1. Obtain and install R
-    If you are on a windows machine follow the link provided above to obtain the R installer for your platform. 
+1.  Obtain and install R
+
+    If you are on a windows machine follow the link provided above to obtain the R installer for your platform.
+
+    If you are on a Linux/GNU machine you have the option of compiling R from the source, or using pre-compiled
+    binaries for your OS. For Debian like systems something like : `sudo apt-get install r-base` should do the trick.
+    
+2.  Launch R
+    
+    Windows users should be able to launch R through Start > All Programs > R > R executable or a  relevant link.
+
+    Linux/GNU users should be able to launch R through their terminal emulator of choice simply by typing `R`.
+    
+3.  Launch the script
+
+    Once in the R environment users should switch to the directory where the script is located using the R command
+    `setwd()`, enclosing the path in the parentheses with single or double quotes and use the command 
+    `source('Good_Turing.R')`. Alternatively the `source()` command can be used without switcing directories but the
+    relative path to the script must be provided in the parentheses enclosed by single or double quotes.
+
+4.  First time run
+    
+    Every time the script is executed it performs a check on the system library in order to determine whether its
+    dependencies are met. The two dependencies(v0.1) of the program are the packages :
+    * fastcluster
+    * minpack.lm
+    
+    Strictly speaking the first is not a dependency since all it does is replace R's stock `hclust()` function for
+    hierarchical clustering with a much faster version. The second is necessary due to the need for a non linear
+    regression to be performed reliably. The function `nlsLM()` of the package is used to that end.
+
+    The user has the choice of installing the packages on his/her own or launching the script and let it determine
+    if the packages are installed. If they are not found then the user will be prompted to install them and after
+    their successful installation the execution of the program will proceed normally.
+    
+    Users wishing to install the packages on their own can do so using the following command :
+    
+    `install.packages(c('fastcluster', 'minpack.lm'))`
+    
+    The previous command does not specify the location of the library nor which repository to use for the
+    installation so the user will be asked to specify these after issuing the command. Note of importance
+    for GNU/Linux users : If you would like to install the packages to a system wide location such as /usr/local/
+    should launch R with administrative privileges(ie `sudo R`), otherwise a personal library will be used.
+    
+5.  Troubleshooting
+
+    The program has been extensively tested with matrices produced with trajectories of the PDB/PSF-DCD world,
+    however any matrix that meets the following criteria is acceptable :
+    
+        *****************************************************************
+        **                                                             **
+        ** This program expects as input a plain ASCII file containing **
+        ** a (NxN) RMSD matrix with its origin at the upper left-hand  **
+        ** corner :                                                    **
+        **                                                             **
+        **                   a11 a12 a13 ... a1N                       **
+        **                   a21 a22 a23 ... a2N                       **
+        **                   a31 a32 a33 ... a3N                       **
+        **                   ...................                       **
+        **                   aN1 aN2 aN3 ... aNN                       **
+        **                                                             **
+        ** For example, the following is a portion of a valid input :  **
+        **                                                             **
+        **                0.000 0.803 0.826 ... 2.138                  **
+        **                0.803 0.000 0.689 ... 2.074                  **
+        **                0.826 0.689 0.000 ... 2.065                  **
+        **                ...........................                  **
+        **                2.138 2.074 2.065 ... 0.000                  **
+        **                                                             **
+        *****************************************************************
 
 
 # **AUTHOR**

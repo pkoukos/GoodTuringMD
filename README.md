@@ -55,8 +55,34 @@ The following steps are required in order to run the script :
     installation so the user will be asked to specify these after issuing the command. Note of importance
     for GNU/Linux users : If you would like to install the packages to a system wide location such as /usr/local/
     should launch R with administrative privileges(ie `sudo R`), otherwise a personal library will be used.
+
+5.  The analysis
+
+    After the program has been launched and provided that the dependencies are met the program proceeds to evaluate
+    the RMSD matrix for compatibility(see the following section for details). After it has been determined that the
+    matrix is compatible with the program, the actual analysis begins. The progress of the analysis is reported in
+    STDOUT in the form of text messages. Successful completion of the program will result in the creation of two
+    files as well as a tar.
     
-5.  Troubleshooting
+    The two files are named :
+    * `good_turing.<filename>.prob.of.unobserved_vs_RMSD.dat` and
+    * `good_turing.<filename>.prob.of.unobserved_vs_RMSD.eps` where `<filename>` is the name of the provided file
+    
+    The second file is an encapsulated postscript plot of the data of the first file. These files are the main
+    result of the analysis and they detail the probability of unseen/unobserved species/molecular conformations
+    for a range of RMSD values.
+    
+    The above files are not always produced. Whether they are produced or not depends on the data contained in
+    the files archived in the tar. These are :
+    * `good_turing.<filename>.max_rmsds.dat`
+    * `good_turing.<filename>.max_rmsds.eps`
+    * `good_turing.<filename>.max_of_mins.dat`
+    * `good_turing.<filename>.max_of_mins.eps`
+    
+    The data in these files is analysed in order to determine whether the length of the trajectory suffices for
+    quantifying convergence.
+    
+6.  Troubleshooting
 
     The program has been extensively tested with matrices produced with trajectories of the PDB/PSF-DCD world,
     however any matrix that meets the following criteria is acceptable :

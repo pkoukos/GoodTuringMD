@@ -4,7 +4,7 @@ Good_Turing.R - Application of Good-Turing statistics to quantify convergence of
 
 # DESCRIPTION
 
-**For an in depth review of the program and its algorithm a paper has been submitted to [arXiv.org]
+**A preprint of a working draft of a paper presenting the method can be obtained from [arXiv.org]
 (http://arxiv.org/abs/1309.1108).**
 
 Good_Turing.R is an [R](http://www.r-project.org/) script which applies Good-Turing statistics on

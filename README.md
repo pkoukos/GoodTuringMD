@@ -2,12 +2,15 @@
 
 Good_Turing.R - Application of Good-Turing statistics to quantify convergence of biomolecular simulations.
 
-# **DESCRIPTION**
+# DESCRIPTION
+
+**For an in depth review of the program and its algorithm a paper has been submitted to [arXiv.org]
+(http://arxiv.org/abs/1309.1108).**
 
 Good_Turing.R is an [R](http://www.r-project.org/) script which applies Good-Turing statistics on
 RMSD matrices of macromolecular dynamics simulation trajectories, with the purpose of quantifying
 convergence and/or sufficient sampling. It is available for all platforms R runs on, including 
-Windows, Mac and *nix. For more info on availability see [here]
+Windows, Mac and *nix. For more info on R availability see [here]
 (http://cran.r-project.org/doc/FAQ/R-FAQ.html#What-machines-does-R-run-on_003f).
 
 The following steps are required in order to run the script :

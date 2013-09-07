@@ -736,7 +736,7 @@ for (i in 1:length(x.pos)) {
 
       for (j in (x.pos[i]-1):x.pos[i-1]) {
         results <- CreateSubmatrix(rmsd.matrix, j, T, F)
-        if (results[1] < a0) {
+        if (results[1] + results[2] < a0) {
           break
         } else {
           temp.max.rmsds[j]     <- results[1]

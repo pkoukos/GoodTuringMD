@@ -125,7 +125,7 @@ ComputeClusters <- function(my.matrix, rmsd.cutoff, rmsd.step) {
   return(cbind(results.x, results.y))
 }
 
-DetermineRmsdStep <- function(my.matrix, init.rmsd) {
+DetermineRmsdStep <- function(my.matrix, init.rmsd, nofpoints) {
 # Calculate the rmsd.step variable required for the above function.
 # Args :
 #   my.matrix : Same as for the above function.
@@ -163,9 +163,9 @@ DetermineRmsdStep <- function(my.matrix, init.rmsd) {
     }
   }
   # After this value has been determined the minimum RMSD of the original matrix
-  # is substracted from it, and it is divided by 20. This is the number of
-  # iterations the above function will perform.
-  rmsd.step <- (upper.rmsd - init.rmsd) / 20
+  # is substracted from it, and it is divided by nofpoints. This is the number
+  # of iterations the above function will perform.
+  rmsd.step <- (upper.rmsd - init.rmsd) / nofpoints
   return(rmsd.step)
 }
 
@@ -245,10 +245,10 @@ CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
                               seq(i, ncol(my.matrix), by=sampling) ]
 
       if (max.rmsd.calc == F && max.of.mins.calc == F) {
-	    results        <- ComputeClusters(new.matrix, min.rmsd, rmsd.step)
+        results        <- ComputeClusters(new.matrix, min.rmsd, rmsd.step)
         results.x[[i]] <- results[, 1]
         results.y[[i]] <- results[, 2]
-	  }
+      }
 
       if (max.rmsd.calc == T) {
         temp.max.rmsds[i] <-
@@ -366,6 +366,29 @@ matrix.error.msg <- '
 *****************************************************************
 '
 
+################################################################################
+##                                                                            ##
+##                    Declaration of the global variables                     ##
+##                                                                            ##
+################################################################################
+
+# These are the samplings that will be used for the max RMSDs and max of mins
+# calculations.
+samplings <- c(1, 2, 3, 4, 6, 8, seq(10, 50, 5), seq(60, 100, 10))
+# This is the number of iterations the ComputeClusters function will go
+# through, in essence determining the number of points in the final plot.
+rmsd.step.iterations <- 20
+# This is the sampling factor after which the max rmsd and max of mins
+# are deemed unrelialbe.
+sampling.cutoff <- 50
+# This is the number of iterations the non linear fitting function performs
+# in order to determine the constants. Increase only if the function does
+# not converge with the default value.
+nls.iter <- 150
+# This is the number of standard deviations the max.rmsd value should differ
+# from A0.
+sigma.factor <- 0
+
 # Find out the platform the program runs on.
 os <- .Platform$OS.type
 
@@ -424,8 +447,16 @@ if (length(temp.file.var) > 1) {
 
 cat('                 OK\n')
 cat('2. Checking dimensions ...')
-nofrows    <- length(scan(input.file, what='raw', sep='\n', quiet=T))
-blank.rows <- length(readLines(input.file)) - nofrows
+if (os == 'windows') {
+  nofrows    <- length(scan(input.file, what='raw', sep='\n', quiet=T))
+  blank.rows <- length(readLines(input.file)) - nofrows
+} else {
+  nofrows    <- as.integer(system(paste('wc -l < ', input.file),
+                           intern=T))
+  blank.rows <- nofrows - as.integer(system(paste('grep -cve \'^\\s*$\'',
+                                                  input.file), intern=T))
+  nofrows    <- nofrows - blank.rows
+}
 
 # Determine if the values are space or tab delimited and after that if the first
 # character is the delimiter or not.
@@ -465,10 +496,10 @@ if (nofrows != nofcols) {
   cat('Number of rows    :', nofrows, '\n')
   cat('\n**************************************************\n',
       'This program  is tuned  for large  scale  problems\n',
-	  '(with matrices  of  the  order of  thousands).  It\n',
-	  'can  not  presently  deal with  matrices less than\n',
-	  '200x200.\n',
-	  '**************************************************\n\n', sep='')
+      '(with matrices  of  the  order of  thousands).  It\n',
+      'can  not  presently  deal with  matrices less than\n',
+      '200x200.\n',
+      '**************************************************\n\n', sep='')
   stop()
 }
 
@@ -488,12 +519,12 @@ cat('   Non-zero matrix ? ')
 for (i in 2:matrix.length) {
   if (rmsd.matrix[i] != 0) {
     cat('                          yes\n')
-	break
+    break
   } else if (i == matrix.length) {
     cat('                           NO\n',
-	    '\n**************************************************\n',
+        '\n**************************************************\n',
         'The matrix appears to  be full of zeros. Aborting.\n',
-		'**************************************************\n\n', sep='')
+        '**************************************************\n\n', sep='')
     cat(matrix.error.msg)
     stop()
   }
@@ -507,9 +538,9 @@ max.rmsd <- max(rmsd.matrix[upper.tri(rmsd.matrix)])
 cat('   Negative values present ?')
 if (min.rmsd < 0) {
   cat('                   YES\n',
-	  '\n**************************************************\n',
-	  'Negative values detected  in the matrix. Aborting.\n',
-	  '**************************************************\n\n', sep='')
+      '\n**************************************************\n',
+      'Negative values detected  in the matrix. Aborting.\n',
+      '**************************************************\n\n', sep='')
   cat(matrix.error.msg)
   stop()
 } else {
@@ -523,8 +554,8 @@ if (max.rmsd > 50) {
       '\n**************************************************\n',
       '             RMSDs higher than 50A ?\n',
       '      Are you sure this is an RMSD matrix ?\n',
-	  '      Continuing and hoping for the best ...\n',
-	  '**************************************************\n\n', sep='')
+      '      Continuing and hoping for the best ...\n',
+      '**************************************************\n\n', sep='')
 } else {
   cat('                                yes\n')
 }
@@ -534,10 +565,10 @@ cat('   Origin of matrix at expected position ?')
 for (i in 1:nofrows) {
   if (rmsd.matrix[i, i] > 0.01) {
     cat('      NO\n',
-	    '\n**************************************************\n',
-	    'Values greater than 0.01 detected in the diagonal.\n',
-	    'Aborting.\n',
-	    '**************************************************\n\n', sep='')
+        '\n**************************************************\n',
+        'Values greater than 0.01 detected in the diagonal.\n',
+        'Aborting.\n',
+        '**************************************************\n\n', sep='')
     cat(matrix.error.msg)
     stop()
   }
@@ -551,7 +582,7 @@ count.dots <- 1
 for (i in 1:nofrows) {
   if (i == round( (nofrows / 10) * count.dots)) {
     cat('.')
-	count.dots <- count.dots + 1
+    count.dots <- count.dots + 1
   }
   dev <- dev + sum(abs(rmsd.matrix[i, (i:nofrows)] -
                        rmsd.matrix[(i:nofrows), i]))
@@ -563,7 +594,7 @@ if (dev >= 0.01) {
   cat(' FAIL\n',
       '\n**************************************************\n',
       '  Are you sure this is a symmetric RMSD matrix ?\n',
-	  '      Continuing and hoping for the best ...\n',
+      '      Continuing and hoping for the best ...\n',
       '**************************************************\n\n', sep='')
 } else {
   cat(' pass\n')
@@ -579,22 +610,22 @@ symmetry.errors.j <- vector()
 for (i in 1:nofrows) {
   if (i == round( (nofrows / 22) * count.dots)) {
     cat('.')
-	count.dots <- count.dots + 1
+    count.dots <- count.dots + 1
   }
   errors <- which(rmsd.matrix[i, (i:nofrows)] -
                   rmsd.matrix[(i:nofrows), i] != 0)
   if (length(errors) > 0) {
     for (j in 1:length(errors)) {
       dif <- abs(rmsd.matrix[i, errors[j] + i - 1] -
-	             rmsd.matrix[errors[j] + i - 1, i]) /
+                 rmsd.matrix[errors[j] + i - 1, i]) /
              (rmsd.matrix[i, errors[j] + i - 1] +
-			  rmsd.matrix[errors[j] + i - 1, i])
+              rmsd.matrix[errors[j] + i - 1, i])
       if (!is.na(dif) && dif >= 0.2) {
-	    count.warnings <- count.warnings + 1
-	    symmetry.errors.i[count.warnings] <- i
-	    symmetry.errors.j[count.warnings] <- errors[j] + i - 1
+        count.warnings <- count.warnings + 1
+        symmetry.errors.i[count.warnings] <- i
+        symmetry.errors.j[count.warnings] <- errors[j] + i - 1
       }
-	}
+    }
   }
 }
 
@@ -603,16 +634,16 @@ if (count.warnings == 0) {
 } else {
   cat(sprintf(" %4d\n", count.warnings),
       '\n**************************************************\n',
-	  '    Symmetry - related  values  at  positions\n\n', sep='')
+      '    Symmetry - related  values  at  positions\n\n', sep='')
   for (i in 1:count.warnings) {
     cat('             ',
-	    sprintf("%5d", symmetry.errors.i[i]), '-',
-	    sprintf("%5d", symmetry.errors.j[i]), ', ',
-	    sprintf("%5d", symmetry.errors.j[i]), '-',
-		sprintf("%5d", symmetry.errors.i[i]), '\n', sep='')
+        sprintf("%5d", symmetry.errors.i[i]), '-',
+        sprintf("%5d", symmetry.errors.j[i]), ', ',
+        sprintf("%5d", symmetry.errors.j[i]), '-',
+        sprintf("%5d", symmetry.errors.i[i]), '\n', sep='')
   }
   cat('\n             differ by more than 20%.\n',
-	  '**************************************************\n\n', sep='')
+      '**************************************************\n\n', sep='')
   rm(dif)
 }
 
@@ -638,21 +669,17 @@ for (i in 1:nofrows) {
 max.of.mins[1]      <- max(maxs.of.mins)
 max.of.mins.devs[1] <- NA
 
-# These are the samplings that will be used for the max RMSDs and max of mins
-# calculations.
-x.pos <- c(1, 2, 3, 4, 6, 8, seq(10, 50, 5), seq(60, 100, 10))
-
 # Determine the RMSD step variable. For more info review the comments of the
 # function that is called.
-rmsd.step <- DetermineRmsdStep(rmsd.matrix, min.rmsd)
+rmsd.step <- DetermineRmsdStep(rmsd.matrix, min.rmsd, rmsd.step.iterations)
 
 max.rmsds     <- vector()
 max.rmsd.devs <- vector()
 
 cat('5. Sampling determination ')
-for (i in 1:length(x.pos)) {
+for (i in 1:length(samplings)) {
   results <- vector()
-  results <- CreateSubmatrix(rmsd.matrix, x.pos[i], T, T)
+  results <- CreateSubmatrix(rmsd.matrix, samplings[i], T, T)
 
   max.rmsds[i]     <- results[1]
   max.rmsd.devs[i] <- results[2]
@@ -693,10 +720,10 @@ for (i in 1:20) {
 # limit the upper voltage that can pass through a diode, in order to prevent the
 # circuit from being damaged.
 custom.regressionA <- nlsLM(max.rmsds ~
-                            I(x.pos + a2) *
-                            I((1 + abs( (x.pos + a2) / a0) ^ a1) ^ (-1.0 / a1)),
+                            I(samplings + a2) *
+                            I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
                             start=list(a0=1, a1=1, a2=1),
-                            control=nls.lm.control(maxiter=150),
+                            control=nls.lm.control(maxiter=nls.iter),
                             weights=(1 / max.rmsd.variances))
 
 # The a0 variable is the RMSD at which the max RMSDs reach a plateau.
@@ -706,10 +733,10 @@ a2 <- summary(custom.regressionA)$coefficients[3]
 
 # Same as above but for the max of mins data.
 custom.regressionB <- nlsLM(max.of.mins ~
-                            I(x.pos + a2) *
-                            I((1 + abs( (x.pos + a2) / a0) ^ a1) ^ (-1.0 / a1)),
+                            I(samplings + a2) *
+                            I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
                             start=list(a0=1, a1=1, a2=1),
-                            control=nls.lm.control(maxiter=150),
+                            control=nls.lm.control(maxiter=nls.iter),
                             weights=(1 / max.of.mins.variances))
 
 b0 <- summary(custom.regressionB)$coefficients[1]
@@ -722,55 +749,54 @@ b2 <- summary(custom.regressionB)$coefficients[3]
 # greater than a0.
 max.rmsd.devs[1] <- 0  # This is so that the else if check below is possible
 outcome <- 0
-for (i in 1:length(x.pos)) {
+for (i in 1:length(samplings)) {
   # If the sampling exceeds 50, then the data is deemed as unsuitable for prob.
   # of unobserved species vs RMSD analysis due to the high noise inherent to
   # these high sampling ratios.
-  if (x.pos[i] >= 50) {
+  if (samplings[i] >= sampling.cutoff) {
     outcome <- 1
     break
-  } else if ( (max.rmsds[i] + max.rmsd.devs[i]) >= a0) {
-    if (i > 1) {
-      temp.max.rmsds     <- vector()
-      temp.max.rmsd.devs <- vector()
+  } else if ( (max.rmsds[i] + (sigma.factor * max.rmsd.devs[i])) >= a0) {
+    top.sampling = samplings[i]
+    for (j in 1:top.sampling) {
+      if ( ! j %in% samplings) {
+        results <- CreateSubmatrix(rmsd.matrix, j, T, T)
 
-      for (j in (x.pos[i]-1):x.pos[i-1]) {
-        results <- CreateSubmatrix(rmsd.matrix, j, T, F)
-        if (results[1] + results[2] < a0) {
+        temp.max.rmsds        <- results[1]
+        temp.max.rmsd.devs    <- results[2]
+        temp.max.of.mins      <- results[3]
+        temp.max.of.mins.devs <- results[4]
+
+        old.samplings <- samplings
+        samplings     <- sort(c(samplings, j))
+
+        sampling.diffs <- samplings %in% old.samplings
+        insert.point   <- max(which(sampling.diffs == FALSE)) - 1
+
+        max.rmsds     <- append(max.rmsds, temp.max.rmsds, after=insert.point)
+        max.rmsd.devs <- append(max.rmsd.devs, temp.max.rmsd.devs,
+                                after=insert.point)
+        max.of.mins      <- append(max.of.mins, temp.max.of.mins,
+                                   after=insert.point)
+        max.of.mins.devs <- append(max.of.mins.devs, temp.max.of.mins.devs,
+                                   after=insert.point)
+
+        if ( (temp.max.rmsds + (sigma.factor * temp.max.rmsd.devs)) >= a0) {
+          i <- which(samplings == j)
           break
-        } else {
-          temp.max.rmsds[j]     <- results[1]
-          temp.max.rmsd.devs[j] <- results[2]
         }
-      }
-
-      temp.max.rmsds     <- temp.max.rmsds[!is.na(temp.max.rmsds)]
-      temp.max.rmsd.devs <- temp.max.rmsd.devs[!is.na(temp.max.rmsd.devs)]
-
-      if (j + 1 != x.pos[i]) {
-        x.pos         <- c(x.pos[1: (i-1)],
-                           c( (j + 1):x.pos[i]),
-                           x.pos[ (i + 1):20])
-        max.rmsds     <- c(max.rmsds[1: (i-1)],
-                           temp.max.rmsds,
-                           max.rmsds[i:20])
-        max.rmsd.devs <- c(max.rmsd.devs[1: (i-1)],
-                           temp.max.rmsd.devs,
-                           max.rmsd.devs[i:20])
-
-        results          <- CreateSubmatrix(rmsd.matrix, i, F, T)
-        max.of.mins      <- c(max.of.mins[1: (i-1)],
-                              results[1],
-                              max.of.mins[i:20])
-        max.of.mins.devs <- c(max.of.mins.devs[1: (i-1)],
-                              results[2],
-                              max.of.mins.devs[i:20])
-
-        i <- which(x.pos == j + 1)
+      } else if (j == top.sampling) {
+        i <- which(samplings == j)
       }
     }
 
-    CreateSubmatrix(rmsd.matrix, x.pos[i], F, F)
+    if (length(samplings) > 20) {
+      rm(old.samplings, sampling.diffs, insert.point, temp.max.rmsds, j,
+         temp.max.rmsd.devs, temp.max.of.mins, temp.max.of.mins.devs,
+         top.sampling)
+    }
+
+    CreateSubmatrix(rmsd.matrix, samplings[i], F, F)
     break
   }
 }
@@ -782,49 +808,49 @@ cat('7. Writing files ...')
 dir.create(paste('good_turing.', file.name, sep=''))
 setwd(paste('good_turing.', file.name, sep=''))
 
-write.table(round(cbind(x.pos, max.rmsds, max.rmsd.devs), 4),
+write.table(round(cbind(samplings, max.rmsds, max.rmsd.devs), 4),
             file=paste('good_turing.', file.name, '.max_rmsds.dat', sep=''),
             row.names=F,
             col.names=F)
 
-write.table(round(cbind(x.pos, max.of.mins, max.of.mins.devs), 4),
+write.table(round(cbind(samplings, max.of.mins, max.of.mins.devs), 4),
             file=paste('good_turing.', file.name, '.max_of_mins.dat', sep=''),
             row.names=F,
             col.names=F)
 
 postscript(file=paste('good_turing.', file.name, '.max_rmsds.eps', sep=''))
-plot(x.pos,
+plot(samplings,
      max.rmsds,
-	 ylim=c(min(max.rmsds) - max(max.rmsd.devs[2:length(max.rmsd.devs)]),
-	        max(max.rmsds) + max(max.rmsd.devs[2:length(max.rmsd.devs)])),
-	 main='Max RMSDs vs sampling',
-	 xlab='Sampling',
-	 ylab='RMSD')
-segments(x.pos, max.rmsds - max.rmsd.devs,
-         x.pos, max.rmsds + max.rmsd.devs)
-segments(x.pos - 0.5, max.rmsds - max.rmsd.devs,
-         x.pos + 0.5, max.rmsds - max.rmsd.devs)
-segments(x.pos - 0.5, max.rmsds + max.rmsd.devs,
-         x.pos + 0.5, max.rmsds + max.rmsd.devs)
-lines(c(1:100), predict(custom.regressionA, list(x.pos=c(1:100))), lty=1,
+     ylim=c(min(max.rmsds) - max(max.rmsd.devs[2:length(max.rmsd.devs)]),
+            max(max.rmsds) + max(max.rmsd.devs[2:length(max.rmsd.devs)])),
+     main='Max RMSDs vs sampling',
+     xlab='Sampling',
+     ylab='RMSD')
+segments(samplings, max.rmsds - max.rmsd.devs,
+         samplings, max.rmsds + max.rmsd.devs)
+segments(samplings - 0.5, max.rmsds - max.rmsd.devs,
+         samplings + 0.5, max.rmsds - max.rmsd.devs)
+segments(samplings - 0.5, max.rmsds + max.rmsd.devs,
+         samplings + 0.5, max.rmsds + max.rmsd.devs)
+lines(c(1:100), predict(custom.regressionA, list(samplings=c(1:100))), lty=1,
       col='blue')
 dev.off()
 
 postscript(file=paste('good_turing.', file.name, '.max_of_mins.eps', sep=''))
-plot(x.pos,
+plot(samplings,
      max.of.mins,
-	 ylim=c(min(max.of.mins)-max(max.of.mins.devs[2:length(max.of.mins.devs)]),
+     ylim=c(min(max.of.mins)-max(max.of.mins.devs[2:length(max.of.mins.devs)]),
             max(max.of.mins)+max(max.of.mins.devs[2:length(max.of.mins.devs)])),
-	 main='Max of minimum RMSDs vs sampling',
-	 xlab='Sampling',
-	 ylab='RMSD')
-segments(x.pos, max.of.mins - max.of.mins.devs,
-         x.pos, max.of.mins + max.of.mins.devs)
-segments(x.pos - 0.5, max.of.mins - max.of.mins.devs,
-         x.pos + 0.5, max.of.mins - max.of.mins.devs)
-segments(x.pos - 0.5, max.of.mins + max.of.mins.devs,
-         x.pos + 0.5, max.of.mins + max.of.mins.devs)
-lines(c(1:100), predict(custom.regressionB, list(x.pos=c(1:100))), lty=1,
+     main='Max of minimum RMSDs vs sampling',
+     xlab='Sampling',
+     ylab='RMSD')
+segments(samplings, max.of.mins - max.of.mins.devs,
+         samplings, max.of.mins + max.of.mins.devs)
+segments(samplings - 0.5, max.of.mins - max.of.mins.devs,
+         samplings + 0.5, max.of.mins - max.of.mins.devs)
+segments(samplings - 0.5, max.of.mins + max.of.mins.devs,
+         samplings + 0.5, max.of.mins + max.of.mins.devs)
+lines(c(1:100), predict(custom.regressionB, list(samplings=c(1:100))), lty=1,
       col='blue')
 dev.off()
 
@@ -863,7 +889,7 @@ if (outcome == 1) {
       '==================================================\n',
       'Summary :\n\n',
       'The maximal RMSDs of the trajectory converged with\n',
-      'a sub-sampling factor of ', sprintf("%2d. ", x.pos[i]),
+      'a sub-sampling factor of ', sprintf("%2d. ", samplings[i]),
       'The analysis suggests\n',
       'that  the  most  different  structure  you  should\n',
       'expect to observe if  you  double  the  simulation\n',
@@ -881,6 +907,7 @@ if (outcome == 1) {
         max.of.mins[i], max.of.mins.devs[i]),
         ' Angstrom  (RMSD)  from\n',
         'those already observed.', sep='')
+    rm(j)
   } else {
     cat('approximately ', sprintf("%.1f", max.of.mins[i]),
         ' Angstrom   (RMSD)   from   those\n',
@@ -894,7 +921,7 @@ rm(ComputeClusters, DetermineMinLength, DetermineRmsdStep, CreateSubmatrix,
    DetermineFirstDiagonalMaxRmsd, DetermineIfBinary, i, input.file, os, nofrows,
    results, min.rmsd, nofcols, rmsd.matrix, file.name, rmsd.step, maxs.of.mins,
    max.of.mins, sorted, temp.file.var, a0, a1, a2, b0, b1, b2, blank.rows,
-   custom.regressionA, custom.regressionB, errors, header.test,
+   custom.regressionA, custom.regressionB, errors, header.test, sigma.factor,
    matrix.error.msg, max.mins.min.var, max.of.mins.devs, max.of.mins.variances,
    max.rmsd.devs, max.rmsd.min.var, max.rmsd.variances, max.rmsds, outcome,
-   tab.dlm, x.pos)
+   tab.dlm, samplings, nls.iter, rmsd.step.iterations, sampling.cutoff)

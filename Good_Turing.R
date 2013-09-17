@@ -390,6 +390,9 @@ nls.iter <- 150
 # This is the number of standard deviations the max.rmsd value should differ
 # from A0.
 sigma.factor <- 0.5
+# Boolean variable which determines if weighted non linear fitting is performed.
+# Default weights are the inverse of the variances.
+weighted.fitting <- FALSE
 
 # Find out the platform the program runs on.
 os <- .Platform$OS.type
@@ -727,7 +730,9 @@ custom.regressionA <- nlsLM(max.rmsds ~
                             I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
                             start=list(a0=1, a1=1, a2=1),
                             control=nls.lm.control(maxiter=nls.iter),
-                            weights=(1 / max.rmsd.variances))
+                            weights=ifelse(rep(weighted.fitting, nofsamplings),
+                                           I(1 / max.rmsd.variances),
+                                           rep(1, nofsamplings)))
 
 # The a0 variable is the RMSD at which the max RMSDs reach a plateau.
 a0 <- summary(custom.regressionA)$coefficients[1]
@@ -740,7 +745,9 @@ custom.regressionB <- nlsLM(max.of.mins ~
                             I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
                             start=list(a0=1, a1=1, a2=1),
                             control=nls.lm.control(maxiter=nls.iter),
-                            weights=(1 / max.of.mins.variances))
+                            weights=ifelse(rep(weighted.fitting, nofsamplings),
+                                           I(1 / max.of.mins.variances),
+                                           rep(1, nofsamplings)))
 
 b0 <- summary(custom.regressionB)$coefficients[1]
 b1 <- summary(custom.regressionB)$coefficients[2]
@@ -753,7 +760,7 @@ b2 <- summary(custom.regressionB)$coefficients[3]
 max.rmsd.devs[1] <- 0  # This is so that the else if check below is possible
 outcome <- 0
 for (i in 1:nofsamplings) {
-  # If the sampling exceeds 50, then the data is deemed as unsuitable for prob.
+  # If the sampling exceeds 100, then the data is deemed as unsuitable for prob.
   # of unobserved species vs RMSD analysis due to the high noise inherent to
   # these high sampling ratios.
   if (samplings[i] >= sampling.cutoff) {
@@ -878,7 +885,7 @@ if (outcome == 1) {
       'upon  doubling  the  simulation  time  you  should\n',
       'expect  to  observe  structures  that  differ from\n',
       'those already observed by more than  approximately\n',
-      paste(sprintf("%.1f", b0), 'Angstrom.'), sep='')
+      paste(sprintf("%.1f", max(max.of.mins)), 'Angstrom.'), sep='')
 
   if ( (max(max.rmsds) * 1.1) <= a0) {
     cat('\n\nAdditional note : based  solely on the  given RMSD\n',
@@ -930,4 +937,4 @@ rm(ComputeClusters, DetermineMinLength, DetermineRmsdStep, CreateSubmatrix,
    matrix.error.msg, max.mins.min.var, max.of.mins.devs, max.of.mins.variances,
    max.rmsd.devs, max.rmsd.min.var, max.rmsd.variances, max.rmsds, outcome,
    tab.dlm, samplings, nls.iter, rmsd.step.iterations, sampling.cutoff, 
-   nofsamplings, count.dots)
+   nofsamplings, count.dots, weighted.fitting)

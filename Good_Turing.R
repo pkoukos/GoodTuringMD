@@ -725,14 +725,33 @@ for (i in 1:nofsamplings) {
 # and has applications in electronic circuit regulation, where it is used to
 # limit the upper voltage that can pass through a diode, in order to prevent the
 # circuit from being damaged.
-custom.regressionA <- nlsLM(max.rmsds ~
-                            I(samplings + a2) *
-                            I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
-                            start=list(a0=1, a1=1, a2=1),
-                            control=nls.lm.control(maxiter=nls.iter),
-                            weights=ifelse(rep(weighted.fitting, nofsamplings),
-                                           I(1 / max.rmsd.variances),
-                                           rep(1, nofsamplings)))
+if (weighted.fitting == T) {
+  custom.regressionA <- nlsLM(max.rmsds ~
+                              I(samplings + a2) *
+                              I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                              start=list(a0=1, a1=1, a2=1),
+                              control=nls.lm.control(maxiter=nls.iter),
+                              weights=I(1 / max.rmsd.variances))
+
+  custom.regressionB <- nlsLM(max.of.mins ~
+                              I(samplings + a2) *
+                              I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                              start=list(a0=1, a1=1, a2=1),
+                              control=nls.lm.control(maxiter=nls.iter),
+                              weights=I(1 / max.of.mins.variances))
+} else {
+  custom.regressionA <- nlsLM(max.rmsds ~
+                              I(samplings + a2) *
+                              I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                              start=list(a0=1, a1=1, a2=1),
+                              control=nls.lm.control(maxiter=nls.iter))
+
+  custom.regressionB <- nlsLM(max.of.mins ~
+                              I(samplings + a2) *
+                              I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                              start=list(a0=1, a1=1, a2=1),
+                              control=nls.lm.control(maxiter=nls.iter))
+}
 
 # The a0 variable is the RMSD at which the max RMSDs reach a plateau.
 a0 <- summary(custom.regressionA)$coefficients[1]
@@ -740,15 +759,6 @@ a1 <- summary(custom.regressionA)$coefficients[2]
 a2 <- summary(custom.regressionA)$coefficients[3]
 
 # Same as above but for the max of mins data.
-custom.regressionB <- nlsLM(max.of.mins ~
-                            I(samplings + a2) *
-                            I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
-                            start=list(a0=1, a1=1, a2=1),
-                            control=nls.lm.control(maxiter=nls.iter),
-                            weights=ifelse(rep(weighted.fitting, nofsamplings),
-                                           I(1 / max.of.mins.variances),
-                                           rep(1, nofsamplings)))
-
 b0 <- summary(custom.regressionB)$coefficients[1]
 b1 <- summary(custom.regressionB)$coefficients[2]
 b2 <- summary(custom.regressionB)$coefficients[3]

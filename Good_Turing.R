@@ -503,7 +503,7 @@ if (nofrows != nofcols) {
       'This program  is tuned  for large  scale  problems\n',
       '(with matrices  of  the  order of  thousands).  It\n',
       'can  not  presently  deal with  matrices less than\n',
-      '200x200.\n',
+      '400x400.\n',
       '**************************************************\n\n', sep='')
   stop()
 }
@@ -770,9 +770,10 @@ b2 <- summary(custom.regressionB)$coefficients[3]
 max.rmsd.devs[1] <- 0  # This is so that the else if check below is possible
 outcome <- 0
 for (i in 1:nofsamplings) {
-  # If the sampling exceeds 100, then the data is deemed as unsuitable for prob.
-  # of unobserved species vs RMSD analysis due to the high noise inherent to
-  # these high sampling ratios.
+  # If the sampling exceeds sampling.cutoff, then the data are deemed as
+  # unsuitable for prob. of unobserved species vs RMSD analysis due to the 
+  # very small size of the resulting matrices [for example, if the value of
+  # the sampling.cutoff is 100, the matrices would be (1/100)th of the original].
   if (samplings[i] >= sampling.cutoff) {
     outcome <- 1
     break

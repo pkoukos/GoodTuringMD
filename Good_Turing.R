@@ -374,20 +374,22 @@ matrix.error.msg <- '
 
 # These are the samplings that will be used for the max RMSDs and max of mins
 # calculations.
-samplings <- c(1, 2, 3, 4, 6, 8, seq(10, 50, 5), seq(60, 100, 10))
+samplings <- c(1, 2, 3, 4, 6, 8, seq(10, 50, 4), seq(55, 100, 5),
+               seq(110, 200, 10))
+nofsamplings <- length(samplings)
 # This is the number of iterations the ComputeClusters function will go
 # through, in essence determining the number of points in the final plot.
 rmsd.step.iterations <- 20
 # This is the sampling factor after which the max rmsd and max of mins
 # are deemed unrelialbe.
-sampling.cutoff <- 50
+sampling.cutoff <- 100
 # This is the number of iterations the non linear fitting function performs
 # in order to determine the constants. Increase only if the function does
 # not converge with the default value.
 nls.iter <- 150
 # This is the number of standard deviations the max.rmsd value should differ
 # from A0.
-sigma.factor <- 0
+sigma.factor <- 0.5
 
 # Find out the platform the program runs on.
 os <- .Platform$OS.type
@@ -490,7 +492,7 @@ if (nofrows != nofcols) {
       '\n**************************************************\n\n', sep='')
   cat(matrix.error.msg)
   stop()
-} else if (nofrows < 200) {
+} else if (nofrows < 400) {
   cat('                 WARNING\n\n')
   cat('Number of columns :', nofcols, '\n')
   cat('Number of rows    :', nofrows, '\n')
@@ -503,7 +505,7 @@ if (nofrows != nofcols) {
   stop()
 }
 
-if (nofrows >= 200) {
+if (nofrows >= 400) {
   cat('                      OK\n')
 }
 cat('3. Loading the matrix ...')
@@ -648,7 +650,7 @@ if (count.warnings == 0) {
 }
 
 # All checks successful. Proceed normally.
-rm(max.rmsd, matrix.length, dev, count.warnings, count.dots,
+rm(max.rmsd, matrix.length, dev, count.warnings,
    symmetry.errors.i, symmetry.errors.j)
 
 # Determine the max of mins for the original matrix, ie for a subsampling factor
@@ -677,7 +679,8 @@ max.rmsds     <- vector()
 max.rmsd.devs <- vector()
 
 cat('5. Sampling determination ')
-for (i in 1:length(samplings)) {
+count.dots <- 1
+for (i in 1:nofsamplings) {
   results <- vector()
   results <- CreateSubmatrix(rmsd.matrix, samplings[i], T, T)
 
@@ -688,12 +691,12 @@ for (i in 1:length(samplings)) {
     max.of.mins.devs[i] <- results[4]
   }
 
-  if (i < 20) {
+  if (i == round( (nofsamplings / 19) * count.dots)) {
     cat('.')
-  } else {
-    cat('.  OK\n')
+    count.dots <- count.dots + 1
   }
 }
+cat('.  OK\n')
 cat('6. Calculating probability curve ...')
 
 max.rmsd.variances    <- max.rmsd.devs^2
@@ -702,7 +705,7 @@ max.of.mins.variances <- max.of.mins.devs^2
 max.rmsd.min.var <- min(max.rmsd.variances[which(max.rmsd.variances > 0)])
 max.mins.min.var <- min(max.of.mins.variances[which(max.of.mins.variances > 0)])
 
-for (i in 1:20) {
+for (i in 1:nofsamplings) {
   if (is.na(max.rmsd.variances[i]) == T || max.rmsd.variances[i] == 0) {
     max.rmsd.variances[i]    <- max.rmsd.min.var
   }
@@ -749,7 +752,7 @@ b2 <- summary(custom.regressionB)$coefficients[3]
 # greater than a0.
 max.rmsd.devs[1] <- 0  # This is so that the else if check below is possible
 outcome <- 0
-for (i in 1:length(samplings)) {
+for (i in 1:nofsamplings) {
   # If the sampling exceeds 50, then the data is deemed as unsuitable for prob.
   # of unobserved species vs RMSD analysis due to the high noise inherent to
   # these high sampling ratios.
@@ -790,7 +793,7 @@ for (i in 1:length(samplings)) {
       }
     }
 
-    if (length(samplings) > 20) {
+    if (length(samplings) > nofsamplings) {
       rm(old.samplings, sampling.diffs, insert.point, temp.max.rmsds, j,
          temp.max.rmsd.devs, temp.max.of.mins, temp.max.of.mins.devs,
          top.sampling)
@@ -832,8 +835,9 @@ segments(samplings - 0.5, max.rmsds - max.rmsd.devs,
          samplings + 0.5, max.rmsds - max.rmsd.devs)
 segments(samplings - 0.5, max.rmsds + max.rmsd.devs,
          samplings + 0.5, max.rmsds + max.rmsd.devs)
-lines(c(1:100), predict(custom.regressionA, list(samplings=c(1:100))), lty=1,
-      col='blue')
+lines(c(1:max(samplings)),
+      predict(custom.regressionA, list(samplings=c(1:max(samplings)))),
+      lty=1, col='blue')
 dev.off()
 
 postscript(file=paste('good_turing.', file.name, '.max_of_mins.eps', sep=''))
@@ -850,8 +854,9 @@ segments(samplings - 0.5, max.of.mins - max.of.mins.devs,
          samplings + 0.5, max.of.mins - max.of.mins.devs)
 segments(samplings - 0.5, max.of.mins + max.of.mins.devs,
          samplings + 0.5, max.of.mins + max.of.mins.devs)
-lines(c(1:100), predict(custom.regressionB, list(samplings=c(1:100))), lty=1,
-      col='blue')
+lines(c(1:max(samplings)),
+      predict(custom.regressionB, list(samplings=c(1:max(samplings)))),
+      lty=1, col='blue')
 dev.off()
 
 setwd('..')
@@ -924,4 +929,5 @@ rm(ComputeClusters, DetermineMinLength, DetermineRmsdStep, CreateSubmatrix,
    custom.regressionA, custom.regressionB, errors, header.test, sigma.factor,
    matrix.error.msg, max.mins.min.var, max.of.mins.devs, max.of.mins.variances,
    max.rmsd.devs, max.rmsd.min.var, max.rmsd.variances, max.rmsds, outcome,
-   tab.dlm, samplings, nls.iter, rmsd.step.iterations, sampling.cutoff)
+   tab.dlm, samplings, nls.iter, rmsd.step.iterations, sampling.cutoff, 
+   nofsamplings, count.dots)

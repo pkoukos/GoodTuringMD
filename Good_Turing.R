@@ -1038,10 +1038,10 @@ if (reached.convergence == FALSE) {
       'The maximal RMSDs of the trajectory converged with\n',
       'a  sub-sampling  factor  of  ', sprintf("%5d. ", samplings[i]),
       ' The  analysis\n',
-      'suggests that the most different  structure\n',
-      'you should expect to observe if you  double\n',
-      'the simulation time will differ by no  more\n',
-      'than ', sep='')
+      'suggests that the  most  different  structure  you\n',
+      'should  expect   to  observe  if  you  double  the\n',
+      'simulation  time  will  differ  by  no  more  than\n',
+      sep='')
 
   if (i > 1 && max.of.mins.devs[i] >= 0.05 * max.of.mins[i]) {
     dev.to.char <- unlist(strsplit(as.character(max.of.mins.devs[i]), split=''))
@@ -1051,14 +1051,14 @@ if (reached.convergence == FALSE) {
       }
     }
 
-    cat('approximately ', sprintf(paste("%.1f +- %.", j-2, "f", sep=''),
+    cat('approximately ', sprintf(paste("%.1f  +-  %.", j-2, "f", sep=''),
         max.of.mins[i], max.of.mins.devs[i]),
-        ' Angstrom (RMSD) from\n',
+        '  Angstrom  (RMSD)  from\n',
         'those already observed.', sep='')
     rm(j)
   } else {
-    cat('approximately ', sprintf("%.1f", max.of.mins[i]),
-        ' Angstrom (RMSD) from  those\n',
+    cat('approximately  ', sprintf("%.1f", max.of.mins[i]),
+        '  Angstrom  (RMSD)  from   those\n',
         'already observed.', sep='')
   }
 }

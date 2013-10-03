@@ -31,7 +31,7 @@
 ################################################################################
 ##                                                                            ##
 ## Name        : Good_Turing.R                                                ##
-## Version     : 0.1, September 2013                                          ##
+## Version     : 0.2, October 2013                                            ##
 ## Input       : This program expects an RMSD matrix as input. The matrix must##
 ##               be square, ie it has to have the same number of lines and    ##
 ##               columns, and symmetrical. Columns have to be separated by    ##
@@ -169,7 +169,7 @@ DetermineRmsdStep <- function(my.matrix, init.rmsd, nofpoints) {
   return(rmsd.step)
 }
 
-DetermineMinLength <- function(lengths){
+DetermineMinLength <- function(lengths) {
 # Determine which of the vectors in the list lengths has the smallest length.
 # Args :
 #   lengths : A list of vectors of variable lengths.
@@ -191,6 +191,88 @@ DetermineIfBinary <- function(filepath, max=1000) {
   b <- readBin(f, "int", max, size=1, signed=FALSE)
   close(f)
   return(max(b)>128)
+}
+
+PerformNonLinearFitting <- function(samplings, rmsds, mins, rmsd.devs,
+                                     mins.devs) {
+# The non linear curve fitting that follows is performed on the max RMSDs and
+# max of mins data in order to determine at which sampling the probability of
+# unobserved vs RMSD analysis should be performed, or even if it should be
+# performed at all. The equation itself looks like :
+# f(x) = (x + A2) * ( (1 + |(x + A2) / A0| ^ A1) ^ (-1 / A1))
+# and has applications in electronic circuit regulation, where it is used to
+# limit the upper voltage that can pass through a diode, in order to prevent the
+# circuit from being damaged.
+# Args :
+#   samplings      : The sampling points so far.
+#   rmsds          : The max RMSDs of each sampling.
+#   mins           : The max of mins of each sampling.
+#   rmsd.devs      : The standard deviations of the max RMSDs.
+#   mins.devs      : The standard deviations of the max of mins.
+#   rmsd.variances : The variances (sd ^ 2) of the max RMSDs.
+#   mins.variances : The variances (sd ^ 2) of the max of mins.
+# Returns :
+#   The a0 values for each fitting.
+  if (weighted.fitting == T) {
+    rmsd.variances <- rmsd.devs ^ 2
+    mins.variances <- mins.devs ^ 2
+
+    rmsd.min.var <- min(rmsd.variances[which(rmsd.variances > 0)])
+    mins.min.var <- min(mins.variances[which(mins.variances > 0)])
+
+    for (i in 1:length(samplings)) {
+      if (is.na(rmsd.variances[i]) == T || rmsd.variances[i] == 0) {
+        rmsd.variances[i] <- rmsd.min.var
+      }
+      if (is.na(mins.variances[i]) == T || mins.variances[i] == 0) {
+        mins.variances[i] <- mins.min.var
+      }
+    }
+
+    max.rmsd.fit    <- nlsLM(rmsds ~
+                             I(samplings + a2) *
+                             I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                             start=list(a0=1, a1=1, a2=1),
+                             control=nls.lm.control(maxiter=nls.iter),
+                             weights=I(1 / rmsd.variances))
+
+    max.of.mins.fit <- nlsLM(mins ~
+                             I(samplings + a2) *
+                             I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                             start=list(a0=1, a1=1, a2=1),
+                             control=nls.lm.control(maxiter=nls.iter),
+                             weights=I(1 / mins.variances))
+  } else {
+    max.rmsd.fit    <- nlsLM(rmsds ~
+                             I(samplings + a2) *
+                             I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                             start=list(a0=1, a1=1, a2=1),
+                             control=nls.lm.control(maxiter=nls.iter))
+
+    max.of.mins.fit <- nlsLM(mins ~
+                             I(samplings + a2) *
+                             I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                             start=list(a0=1, a1=1, a2=1),
+                             control=nls.lm.control(maxiter=nls.iter))
+  }
+
+  # The a0 variable is the RMSD at which the max RMSDs reach a plateau.
+  a0 <- summary(max.rmsd.fit)$coefficients[1]
+  
+  cutoff <- samplings[length(samplings)] / 2
+  
+  rmsd.devs[1] <- 0
+  for (i in 1:length(samplings)) {
+  # cat('Sampling is', samplings[i], 'AO is', a0,
+      # 'RMSD is', rmsds[i] + 0.5 * rmsd.devs[i], '\n')
+    if ( (rmsds[i] + (sigma.factor * rmsd.devs[i])) >= a0
+        && samplings[i] < cutoff) {
+      return(TRUE)
+      break
+    }
+  }
+
+  return(FALSE)
 }
 
 DetermineFirstDiagonalMaxRmsd <- function(my.matrix, mat.length) {
@@ -295,7 +377,8 @@ CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
        main=paste('Probability of unobserved species vs RMSD\n', file.name),
        xlab='RMSD', ylab='P_unobserved', type='o', col='black')
   mtext(paste('Expected maximal RMSD upon doubling of the simulation time is',
-        round(max.of.mins[sampling], 3), 'Angstrom.'), side=1, line=5)
+              round(max.of.mins[which(samplings==sampling)], 3), 'Angstrom.'),
+        side=1, line=5)
   legend('topright', '(x,y)',
          c(paste(sampling, 'X', sep='')),
          lwd=c(2.5),
@@ -375,13 +458,13 @@ matrix.error.msg <- '
 # These are the samplings that will be used for the max RMSDs and max of mins
 # calculations.
 samplings <- c(1, 2, 3, 4, 6, 8, seq(10, 50, 4), seq(55, 100, 5),
-               seq(110, 200, 10))
+               seq(110, 200, 10), seq(220, 10000, 20))
 nofsamplings <- length(samplings)
 # This is the number of iterations the ComputeClusters function will go
 # through, in essence determining the number of points in the final plot.
 rmsd.step.iterations <- 20
 # This is the sampling factor after which the max rmsd and max of mins
-# are deemed unrelialbe.
+# are deemed unrelialbe. It changes depending on the convergence sampling.
 sampling.cutoff <- 100
 # This is the number of iterations the non linear fitting function performs
 # in order to determine the constants. Increase only if the function does
@@ -393,6 +476,7 @@ sigma.factor <- 0.5
 # Boolean variable which determines if weighted non linear fitting is performed.
 # Default weights are the inverse of the variances.
 weighted.fitting <- FALSE
+
 
 # Find out the platform the program runs on.
 os <- .Platform$OS.type
@@ -680,10 +764,18 @@ rmsd.step <- DetermineRmsdStep(rmsd.matrix, min.rmsd, rmsd.step.iterations)
 
 max.rmsds     <- vector()
 max.rmsd.devs <- vector()
+went.past.200 <- FALSE
+reached.convergence <- TRUE
 
 cat('5. Sampling determination ')
 count.dots <- 1
 for (i in 1:nofsamplings) {
+  if (samplings[i] > nofrows / 2) {
+    samplings <- samplings[1: (i - 1)]
+    reached.convergence <- FALSE
+    break
+  }
+
   results <- vector()
   results <- CreateSubmatrix(rmsd.matrix, samplings[i], T, T)
 
@@ -694,19 +786,45 @@ for (i in 1:nofsamplings) {
     max.of.mins.devs[i] <- results[4]
   }
 
-  if (i == round( (nofsamplings / 19) * count.dots)) {
+  if (samplings[i] > 200) {
+    went.past.200 <- TRUE
+  }
+
+  if (i == round( (length(which(samplings < 200)) / 19) * count.dots)
+      && samplings[i] < 200) {
     cat('.')
     count.dots <- count.dots + 1
   }
+
+  if (samplings[i] %% 200 == 0) {
+    sampling.cutoff <- samplings[i] / 2
+
+    reached.convergence <- PerformNonLinearFitting(
+      samplings[1:i], max.rmsds, max.of.mins, max.rmsd.devs, max.of.mins.devs)
+
+    if (reached.convergence == TRUE) {
+      samplings <- samplings[1:i]
+      break
+    }
+
+    if (samplings[i] == 200) {
+      cat('  NOK\n   Convergence not reached.\n   Extending sampling factors to   400.\n',
+          sep='')
+    } else if (samplings[i] < 10000) {
+      cat(sprintf("   Extending sampling factors to %5d.\n", samplings[i]+200), sep='')
+    }
+  }
 }
-cat('.  OK\n')
-cat('6. Calculating probability curve ...')
 
 max.rmsd.variances    <- max.rmsd.devs^2
 max.of.mins.variances <- max.of.mins.devs^2
 
 max.rmsd.min.var <- min(max.rmsd.variances[which(max.rmsd.variances > 0)])
 max.mins.min.var <- min(max.of.mins.variances[which(max.of.mins.variances > 0)])
+
+# Update the nofsamplings variable because the number of sampling points may
+# have changed.
+nofsamplings <- length(samplings)
 
 for (i in 1:nofsamplings) {
   if (is.na(max.rmsd.variances[i]) == T || max.rmsd.variances[i] == 0) {
@@ -717,40 +835,32 @@ for (i in 1:nofsamplings) {
   }
 }
 
-# The non linear curve fitting that follows is performed on the max RMSDs and
-# max of mins data in order to determine at which sampling the probability of
-# unobserved vs RMSD analysis should be performed, or even if it should be
-# performed at all. The equation itself looks like :
-# f(x) = (x + A2) * ( (1 + |(x + A2) / A0| ^ A1) ^ (-1 / A1))
-# and has applications in electronic circuit regulation, where it is used to
-# limit the upper voltage that can pass through a diode, in order to prevent the
-# circuit from being damaged.
 if (weighted.fitting == T) {
-  custom.regressionA <- nlsLM(max.rmsds ~
-                              I(samplings + a2) *
-                              I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
-                              start=list(a0=1, a1=1, a2=1),
-                              control=nls.lm.control(maxiter=nls.iter),
-                              weights=I(1 / max.rmsd.variances))
+custom.regressionA <- nlsLM(max.rmsds ~
+                            I(samplings + a2) *
+                            I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                            start=list(a0=1, a1=1, a2=1),
+                            control=nls.lm.control(maxiter=nls.iter),
+                            weights=I(1 / max.rmsd.variances))
 
-  custom.regressionB <- nlsLM(max.of.mins ~
-                              I(samplings + a2) *
-                              I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
-                              start=list(a0=1, a1=1, a2=1),
-                              control=nls.lm.control(maxiter=nls.iter),
-                              weights=I(1 / max.of.mins.variances))
+custom.regressionB <- nlsLM(max.of.mins ~
+                            I(samplings + a2) *
+                            I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                            start=list(a0=1, a1=1, a2=1),
+                            control=nls.lm.control(maxiter=nls.iter),
+                            weights=I(1 / max.of.mins.variances))
 } else {
-  custom.regressionA <- nlsLM(max.rmsds ~
-                              I(samplings + a2) *
-                              I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
-                              start=list(a0=1, a1=1, a2=1),
-                              control=nls.lm.control(maxiter=nls.iter))
+custom.regressionA <- nlsLM(max.rmsds ~
+                            I(samplings + a2) *
+                            I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                            start=list(a0=1, a1=1, a2=1),
+                            control=nls.lm.control(maxiter=nls.iter))
 
-  custom.regressionB <- nlsLM(max.of.mins ~
-                              I(samplings + a2) *
-                              I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
-                              start=list(a0=1, a1=1, a2=1),
-                              control=nls.lm.control(maxiter=nls.iter))
+custom.regressionB <- nlsLM(max.of.mins ~
+                            I(samplings + a2) *
+                            I((1 + abs((samplings + a2) / a0) ^ a1)^(-1.0/a1)),
+                            start=list(a0=1, a1=1, a2=1),
+                            control=nls.lm.control(maxiter=nls.iter))
 }
 
 # The a0 variable is the RMSD at which the max RMSDs reach a plateau.
@@ -768,63 +878,77 @@ b2 <- summary(custom.regressionB)$coefficients[3]
 # determine which is the smallest sampling that can be used whose max RMSD is
 # greater than a0.
 max.rmsd.devs[1] <- 0  # This is so that the else if check below is possible
-outcome <- 0
-for (i in 1:nofsamplings) {
-  # If the sampling exceeds sampling.cutoff, then the data are deemed as
-  # unsuitable for prob. of unobserved species vs RMSD analysis due to the 
-  # very small size of the resulting matrices [for example, if the value of
-  # the sampling.cutoff is 100, the matrices would be (1/100)th of the original].
-  if (samplings[i] >= sampling.cutoff) {
-    outcome <- 1
-    break
-  } else if ( (max.rmsds[i] + (sigma.factor * max.rmsd.devs[i])) >= a0) {
-    top.sampling = samplings[i]
-    for (j in 1:top.sampling) {
-      if ( ! j %in% samplings) {
-        results <- CreateSubmatrix(rmsd.matrix, j, T, T)
 
-        temp.max.rmsds        <- results[1]
-        temp.max.rmsd.devs    <- results[2]
-        temp.max.of.mins      <- results[3]
-        temp.max.of.mins.devs <- results[4]
-
-        old.samplings <- samplings
-        samplings     <- sort(c(samplings, j))
-
-        sampling.diffs <- samplings %in% old.samplings
-        insert.point   <- max(which(sampling.diffs == FALSE)) - 1
-
-        max.rmsds     <- append(max.rmsds, temp.max.rmsds, after=insert.point)
-        max.rmsd.devs <- append(max.rmsd.devs, temp.max.rmsd.devs,
-                                after=insert.point)
-        max.of.mins      <- append(max.of.mins, temp.max.of.mins,
-                                   after=insert.point)
-        max.of.mins.devs <- append(max.of.mins.devs, temp.max.of.mins.devs,
-                                   after=insert.point)
-
-        if ( (temp.max.rmsds + (sigma.factor * temp.max.rmsd.devs)) >= a0) {
-          i <- which(samplings == j)
-          break
-        }
-      } else if (j == top.sampling) {
-        i <- which(samplings == j)
-      }
-    }
-
-    if (length(samplings) > nofsamplings) {
-      rm(old.samplings, sampling.diffs, insert.point, temp.max.rmsds, j,
-         temp.max.rmsd.devs, temp.max.of.mins, temp.max.of.mins.devs,
-         top.sampling)
-    }
-
-    CreateSubmatrix(rmsd.matrix, samplings[i], F, F)
-    break
+if (reached.convergence == T) {
+  if (went.past.200 == FALSE) {
+    cat('   OK\n')
   }
-}
-max.rmsd.devs[1] <- NA  # Reversing the assignment of zero.
+  cat('6. Calculating probability curve ...')
 
-cat('            OK\n')
-cat('7. Writing files ...')
+  for (i in 1:nofsamplings) {
+    # If the sampling exceeds sampling.cutoff, then the data are deemed as
+    # unsuitable for prob. of unobserved species vs RMSD analysis due to the 
+    # very small size of the resulting matrices [for example, if the value of
+    # the sampling.cutoff is 100, the matrices would be (1/100)th of the original].
+    if (samplings[i] >= sampling.cutoff) {
+      reached.convergence <- FALSE
+      break
+    } else if ( (max.rmsds[i] + (sigma.factor * max.rmsd.devs[i])) >= a0) {
+      if (went.past.200 == FALSE) {
+        top.sampling <- samplings[i]
+        for (j in 1:top.sampling) {
+          if ( ! j %in% samplings) {
+            results <- CreateSubmatrix(rmsd.matrix, j, T, T)
+
+            temp.max.rmsds        <- results[1]
+            temp.max.rmsd.devs    <- results[2]
+            temp.max.of.mins      <- results[3]
+            temp.max.of.mins.devs <- results[4]
+
+            old.samplings <- samplings
+            samplings     <- sort(c(samplings, j))
+
+            sampling.diffs <- samplings %in% old.samplings
+            insert.point   <- max(which(sampling.diffs == FALSE)) - 1
+
+            max.rmsds     <- append(max.rmsds, temp.max.rmsds, after=insert.point)
+            max.rmsd.devs <- append(max.rmsd.devs, temp.max.rmsd.devs,
+                                    after=insert.point)
+            max.of.mins      <- append(max.of.mins, temp.max.of.mins,
+                                       after=insert.point)
+            max.of.mins.devs <- append(max.of.mins.devs, temp.max.of.mins.devs,
+                                       after=insert.point)
+
+            if ( (temp.max.rmsds + (sigma.factor * temp.max.rmsd.devs)) >= a0) {
+              i <- which(samplings == j)
+              break
+            }
+          } else if (j == top.sampling) {
+            i <- which(samplings == j)
+          }
+        }
+      }
+
+      if (length(samplings) > nofsamplings) {
+        rm(old.samplings, sampling.diffs, insert.point, temp.max.rmsds, j,
+           temp.max.rmsd.devs, temp.max.of.mins, temp.max.of.mins.devs,
+           top.sampling)
+      }
+
+      CreateSubmatrix(rmsd.matrix, samplings[i], F, F)
+      break
+    }
+  }
+  
+  cat('            OK\n')
+}
+
+max.rmsd.devs[1] <- NA  # Reversing the assignment of zero.
+if (reached.convergence == T) {
+  cat('7. Writing files ...')
+} else {
+  cat('6. Writing files ...')
+}
 
 dir.create(paste('good_turing.', file.name, sep=''))
 setwd(paste('good_turing.', file.name, sep=''))
@@ -886,7 +1010,7 @@ unlink(paste('good_turing.', file.name, sep=''), recursive=T)
 
 cat('                            OK\n')
 
-if (outcome == 1) {
+if (reached.convergence == FALSE) {
   cat('\nSummary :\n\n',
       'The maximal RMSDs  between the observed trajectory\n',
       'structures  have  not converged. This implies that\n',
@@ -912,11 +1036,12 @@ if (outcome == 1) {
       '==================================================\n',
       'Summary :\n\n',
       'The maximal RMSDs of the trajectory converged with\n',
-      'a sub-sampling factor of ', sprintf("%2d. ", samplings[i]),
-      'The analysis suggests\n',
-      'that  the  most  different  structure  you  should\n',
-      'expect to observe if  you  double  the  simulation\n',
-      'time    will    differ    by    no     more   than\n', sep='')
+      'a  sub-sampling  factor  of  ', sprintf("%5d. ", samplings[i]),
+      ' The  analysis\n',
+      'suggests that the most different  structure\n',
+      'you should expect to observe if you  double\n',
+      'the simulation time will differ by no  more\n',
+      'than ', sep='')
 
   if (i > 1 && max.of.mins.devs[i] >= 0.05 * max.of.mins[i]) {
     dev.to.char <- unlist(strsplit(as.character(max.of.mins.devs[i]), split=''))
@@ -928,12 +1053,12 @@ if (outcome == 1) {
 
     cat('approximately ', sprintf(paste("%.1f +- %.", j-2, "f", sep=''),
         max.of.mins[i], max.of.mins.devs[i]),
-        ' Angstrom  (RMSD)  from\n',
+        ' Angstrom (RMSD) from\n',
         'those already observed.', sep='')
     rm(j)
   } else {
     cat('approximately ', sprintf("%.1f", max.of.mins[i]),
-        ' Angstrom   (RMSD)   from   those\n',
+        ' Angstrom (RMSD) from  those\n',
         'already observed.', sep='')
   }
 }
@@ -946,6 +1071,6 @@ rm(ComputeClusters, DetermineMinLength, DetermineRmsdStep, CreateSubmatrix,
    max.of.mins, sorted, temp.file.var, a0, a1, a2, b0, b1, b2, blank.rows,
    custom.regressionA, custom.regressionB, errors, header.test, sigma.factor,
    matrix.error.msg, max.mins.min.var, max.of.mins.devs, max.of.mins.variances,
-   max.rmsd.devs, max.rmsd.min.var, max.rmsd.variances, max.rmsds, outcome,
-   tab.dlm, samplings, nls.iter, rmsd.step.iterations, sampling.cutoff, 
+   max.rmsd.devs, max.rmsd.min.var, max.rmsd.variances, max.rmsds,
+   tab.dlm, samplings, nls.iter, rmsd.step.iterations, sampling.cutoff,
    nofsamplings, count.dots, weighted.fitting)

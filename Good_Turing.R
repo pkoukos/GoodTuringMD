@@ -31,7 +31,33 @@
 ################################################################################
 ##                                                                            ##
 ## Name        : Good_Turing.R                                                ##
-## Version     : 0.2, October 2013                                            ##
+## Version     : 0.0.3.                                                       ##
+## Changes     : 0.0.3. October 2013.                                         ##
+##               Added CalculateMaxofMinsProbabilities function which allows  ##
+##               the calculation of the probability of unobserved species in a##
+##               that doesn't utilise the hierarchical clustering techniques  ##
+##               used in the previous versions. The produced files are named: ##
+##               good_turing.<file.name>.P_unobserved_vs_RMSD_mins_based.dat  ##
+##               good_turing.<file.name>.P_unobserved_vs_RMSD_mins_based.eps  ##
+##               good_turing.<file.name>.RMSD_mins_samplings.dat              ##
+##               The first is a three column matrix. The first column is popu-##
+##               lated with the RMSDs, the second with the probabilities and  ##
+##               the third with the RMSD deviations. The second file is plot. ##
+##               The grey dots represent the min RMSDs of the various samplings#
+##               the black line their mean value ( the first column of the    ##
+##               .dat file ) and the red line the probability of unobserved as##
+##               determined by the hierarchical clustering. If the variable   ##
+##               write.max.of.mins.postscript == FALSE ( default ), these files#
+##               can be found in the TAR along with the other results. If it is#
+##               TRUE then the old P_unobserved files are moved to the TAR and##
+##               these files are presented in the current working directory.  ##
+##               0.0.2. October 2013.                                         ##
+##               Extended the max sampling factor to 10.000. The new function ##
+##               PerformNonLinearFitting tests for convergence and if it isn't##
+##               reached with a sampling factor smaller than or equal to 200, ##
+##               the sampling factors are increased by 200 up to 10.000.      ##
+##               0.0.1. September 2013.                                       ##
+##               Initial release.                                             ##
 ## Input       : This program expects an RMSD matrix as input. The matrix must##
 ##               be square, ie it has to have the same number of lines and    ##
 ##               columns, and symmetrical. Columns have to be separated by    ##
@@ -295,6 +321,111 @@ DetermineFirstDiagonalMaxRmsd <- function(my.matrix, mat.length) {
   return(max.rmsd)
 }
 
+CalculateMaxofMinsProbabilities <- function(rmsds, probabilities) {
+# Determine the probability of unobserved species using an alternative method to
+# the one used in the ComputeClusters function.
+# Args :
+# rmsds         : The RMSDs used for the determination of the probability of 
+#                 unobserved species as determined by the CreateSubmatrix
+#                 subroutine.
+# probabilities : The probabilities of unobserved species as determined by the
+#                 ComputeClusters subroutine.
+# Returns :
+# Nothing. It creates the three files described in the notes of release 0.0.3
+# above.
+  max.of.mins.results       <- list()
+  max.of.mins.probabilities <- vector()
+  max.of.mins.means         <- vector()
+  max.of.mins.devs          <- vector()
+
+  if (samplings[i] == 1) {
+    max.of.mins.results[[1]] <- maxs.of.mins
+  } else {
+    max.of.mins.results <- CreateSubmatrix(rmsd.matrix, samplings[i], F, T)
+  }
+
+  nofsamplings <- length(max.of.mins.results)
+  nofpoints    <- length(max.of.mins.results[[1]])
+
+  for (j in 1:nofsamplings) {
+    max.of.mins.results[[j]] <- sort(max.of.mins.results[[j]])
+  }
+  
+  max.rmsd     <- 0
+  for (j in 1:nofsamplings) {
+    if (max.rmsd < max.of.mins.results[[j]][nofpoints]) {
+      max.rmsd <- max.of.mins.results[[j]][nofpoints]
+    }
+  }
+      
+  for (j in 1:nofpoints) {
+    temp.max.of.mins <- vector()
+    max.of.mins.probabilities[j] <- (nofpoints - j + 1) / nofpoints
+    for (k in 1:nofsamplings) {
+      temp.max.of.mins[k] <- max.of.mins.results[[k]][j]
+    }
+
+    max.of.mins.means[j] <- mean(temp.max.of.mins)
+    max.of.mins.devs[j]  <- sd(temp.max.of.mins)
+  }
+  
+  write.table(cbind(round(max.of.mins.means, 4),
+                    round(max.of.mins.probabilities, 4),
+                    round(max.of.mins.devs, 4)),
+              file=paste('good_turing.',
+                         file.name,
+                         '.P_unobserved_vs_RMSD_mins_based.dat',
+                         sep=''),
+              col.names=c('RMSD', 'Probability', 'Deviation'),
+              row.names=F,
+              sep='\t')
+
+  postscript(file=paste('good_turing.', file.name,
+                        '.P_unobserved_vs_RMSD_mins_based.eps', sep=''))
+                        
+  max.of.mins.array <- matrix(nrow=nofpoints, ncol=nofsamplings)
+
+  for (j in 1:nofsamplings) {
+    if (j == 1) {
+      plot(max.of.mins.results[[j]],
+           max.of.mins.probabilities,
+           ylim=c(0, 1),
+           xlim=c(0, max.rmsd),
+           main=paste('Probability of unobserved species vs RMSD\n', file.name),
+           xlab='RMSD',
+           ylab='P_unobserved',
+           type='p',
+           col='darkgrey',
+           cex=0.5)
+    }
+
+    lines(max.of.mins.results[[j]],
+          max.of.mins.probabilities,
+          type='p', col='darkgrey', cex=0.5)
+    
+    max.of.mins.array[, j] <- max.of.mins.results[[j]]
+  }
+
+  write.table(round(max.of.mins.array, 4),
+              file=paste('good_turing.',
+                         file.name,
+                         '.RMSD_mins_samplings.dat',
+                         sep=''),
+              col.names=F,
+              row.names=F,
+              sep='\t')
+
+  lines(max.of.mins.means,
+        max.of.mins.probabilities,
+        type='l')
+
+  lines(rmsds,
+        probabilities,
+        type='l', col='red')
+
+  dev.off()
+}
+
 CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
                             max.of.mins.calc) {
 # Create a submatrix of the original and create the probability of unobserved
@@ -322,6 +453,7 @@ CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
     temp.max.rmsds    <- vector()
     temp.maxs.of.mins <- vector()
     temp.max.of.mins  <- vector()
+    list.of.mins      <- list()
     for (i in 1:sampling) {
       new.matrix <- my.matrix[seq(i, nrow(my.matrix), by=sampling),
                               seq(i, ncol(my.matrix), by=sampling) ]
@@ -342,7 +474,10 @@ CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
           sorted               <- sort(new.matrix[j, ])
           temp.maxs.of.mins[j] <- sorted[2]
         }
-      temp.max.of.mins[i] <- max(temp.maxs.of.mins)
+        
+        list.of.mins[[i]] <- temp.maxs.of.mins
+        
+        temp.max.of.mins[i] <- max(temp.maxs.of.mins)
       }
     }
 
@@ -352,7 +487,7 @@ CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
     } else if (max.rmsd.calc == T) {
       return(c(mean(temp.max.rmsds)  , sd(temp.max.rmsds)))
     } else if (max.of.mins.calc == T) {
-      return(c(mean(temp.max.of.mins), sd(temp.max.of.mins)))
+      return(list.of.mins)
     }
 
     results.x.final <- DetermineMinLength(results.x)
@@ -416,6 +551,10 @@ CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
   }
 
   dev.off()
+  
+  CalculateMaxofMinsProbabilities(
+    results.x.final,
+    results.y.final)
 }
 
 ################################################################################
@@ -476,6 +615,9 @@ sigma.factor <- 0.5
 # Boolean variable which determines if weighted non linear fitting is performed.
 # Default weights are the inverse of the variances.
 weighted.fitting <- FALSE
+# Boolean variable which determines if a postscript (and corresponding .dat) file
+# which contains a plot of the max of mins values vs the prob of unobserved.
+write.max.of.mins.postscript <- FALSE
 
 
 # Find out the platform the program runs on.
@@ -587,7 +729,7 @@ if (nofrows != nofcols) {
       'This program  is tuned  for large  scale  problems\n',
       '(with matrices  of  the  order of  thousands).  It\n',
       'can  not  presently  deal with  matrices less than\n',
-      '400x400.\n',
+      '400 x 400.\n',
       '**************************************************\n\n', sep='')
   stop()
 }
@@ -951,6 +1093,73 @@ if (reached.convergence == T) {
 }
 
 dir.create(paste('good_turing.', file.name, sep=''))
+
+if (write.max.of.mins.postscript == TRUE) {
+  temp.dat.name <- paste('good_turing.',
+                         file.name,
+                         '.P_unobserved_vs_RMSD.dat',
+                         sep='')
+  
+  temp.eps.name <- paste('good_turing.',
+                         file.name,
+                         '.P_unobserved_vs_RMSD.eps',
+                         sep='')
+  
+  file.rename(temp.dat.name,
+              paste('good_turing.',
+                    file.name,
+                    '/',
+                    temp.dat.name,
+                    sep=''))
+                    
+  file.rename(temp.eps.name,
+              paste('good_turing.',
+                    file.name,
+                    '/',
+                    temp.eps.name,
+                    sep=''))
+                    
+  rm(temp.dat.name, temp.eps.name)
+} else {
+  temp.dat.name <- paste('good_turing.',
+                         file.name,
+                         '.P_unobserved_vs_RMSD_mins_based.dat',
+                         sep='')
+  
+  temp.samplings.name <- paste('good_turing.',
+                               file.name,
+                               '.RMSD_mins_samplings.dat',
+                               sep='')
+  
+  temp.eps.name <- paste('good_turing.',
+                         file.name,
+                         '.P_unobserved_vs_RMSD_mins_based.eps',
+                         sep='')
+  
+  file.rename(temp.dat.name,
+              paste('good_turing.',
+                    file.name,
+                    '/',
+                    temp.dat.name,
+                    sep=''))
+                    
+  file.rename(temp.samplings.name,
+              paste('good_turing.',
+                    file.name,
+                    '/',
+                    temp.samplings.name,
+                    sep=''))
+                    
+  file.rename(temp.eps.name,
+              paste('good_turing.',
+                    file.name,
+                    '/',
+                    temp.eps.name,
+                    sep=''))
+                    
+  rm(temp.dat.name, temp.samplings.name, temp.eps.name)
+}
+
 setwd(paste('good_turing.', file.name, sep=''))
 
 write.table(round(cbind(samplings, max.rmsds, max.rmsd.devs), 4),
@@ -1052,9 +1261,22 @@ if (reached.convergence == FALSE) {
     }
 
     cat('approximately ', sprintf(paste("%.1f  +-  %.", j-2, "f", sep=''),
-        max.of.mins[i], max.of.mins.devs[i]),
-        '  Angstrom  (RMSD)  from\n',
-        'those already observed.', sep='')
+        max.of.mins[i], max.of.mins.devs[i]), sep='')
+ 
+    if (j - 2 == 1) {
+      cat('  Angstrom  (RMSD)  from\n',
+          'those already observed.', sep='')
+    } else if (j - 2 == 2) {
+      cat('  Angstrom (RMSD)  from\n',
+          'those already observed.', sep='')
+    } else if (j - 2 == 3) {
+      cat('  Angstrom (RMSD) from\n',
+          'those already observed.', sep='')
+    } else if (j - 2 == 4) {
+      cat(' Angstrom (RMSD) from\n',
+          'those already observed.', sep='')
+    }
+
     rm(j)
   } else {
     cat('approximately  ', sprintf("%.1f", max.of.mins[i]),

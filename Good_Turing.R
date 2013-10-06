@@ -597,7 +597,7 @@ matrix.error.msg <- '
 # These are the samplings that will be used for the max RMSDs and max of mins
 # calculations.
 samplings <- c(1, 2, 3, 4, 6, 8, seq(10, 50, 4), seq(55, 100, 5),
-               seq(110, 200, 10), seq(220, 10000, 20))
+               seq(110, 10000, 10))
 nofsamplings <- length(samplings)
 # This is the number of iterations the ComputeClusters function will go
 # through, in essence determining the number of points in the final plot.

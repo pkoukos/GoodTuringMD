@@ -1120,7 +1120,7 @@ if (write.max.of.mins.postscript == TRUE) {
                     sep=''))
                     
   rm(temp.dat.name, temp.eps.name)
-} else {
+} else if (reached.convergence == T) {
   temp.dat.name <- paste('good_turing.',
                          file.name,
                          '.P_unobserved_vs_RMSD_mins_based.dat',

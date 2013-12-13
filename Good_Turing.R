@@ -31,7 +31,18 @@
 ################################################################################
 ##                                                                            ##
 ## Name        : Good_Turing.R                                                ##
-## Version     : 0.0.3.                                                       ##
+## Version     : 0.0.4.                                                       ##
+## Changes     : 0.0.4. December 2013.                                        ##
+##               Introduced the max.RMSD.outlier.cutoff variable which modifies#
+##               the standard deviation of a max.rmsd which is found to be 30 ##
+##               times smaller than the average deviation. The value assigned ##
+##               to the variances that are modified is the minimum among the  ##
+##               deviations that are above the cutoff ( ie 30 ).              ##
+##               The above change serves as replacement for the assignment of ##
+##               minimum variance to the NA variances which has been removed. ##
+##               Fixed a bug that occured when two or more whitespace chars   ##
+##               ( ie spaces or tabs ) were used to separate the values of the##
+##               RMSD matrix.                                                 ##
 ## Changes     : 0.0.3. October 2013.                                         ##
 ##               Added CalculateMaxofMinsProbabilities function which allows  ##
 ##               the calculation of the probability of unobserved species in a##
@@ -125,6 +136,7 @@ ComputeClusters <- function(my.matrix, rmsd.cutoff, rmsd.step) {
 #   Two vectors containing the RMSDs and the probability of unobserved species
 #   for each RMSD.
   hc <- hclust(as.dist(my.matrix), method="complete")
+
   results.x <- vector()
   results.y <- vector()
   j <- 1
@@ -159,6 +171,12 @@ DetermineRmsdStep <- function(my.matrix, init.rmsd, nofpoints) {
 # Returns :
 #   A numeric variable which is the rmsd.step to be used in the above function.
   hc <- hclust(as.dist(my.matrix), method="complete")
+  
+  clusters            <- as.vector(cutree(hc, h=0))
+  cluster.frequencies <- cbind(Frequency=sort(table(clusters)))
+  if (length(which(cluster.frequencies == 1)) == 0) {
+    return(FALSE)
+  }
 
   occurrences.of.min <- 1
   lower.rmsd         <- 0
@@ -242,18 +260,6 @@ PerformNonLinearFitting <- function(samplings, rmsds, mins, rmsd.devs,
   if (weighted.fitting == T) {
     rmsd.variances <- rmsd.devs ^ 2
     mins.variances <- mins.devs ^ 2
-
-    rmsd.min.var <- min(rmsd.variances[which(rmsd.variances > 0)])
-    mins.min.var <- min(mins.variances[which(mins.variances > 0)])
-
-    for (i in 1:length(samplings)) {
-      if (is.na(rmsd.variances[i]) == T || rmsd.variances[i] == 0) {
-        rmsd.variances[i] <- rmsd.min.var
-      }
-      if (is.na(mins.variances[i]) == T || mins.variances[i] == 0) {
-        mins.variances[i] <- mins.min.var
-      }
-    }
 
     max.rmsd.fit    <- nlsLM(rmsds ~
                              I(samplings + a2) *
@@ -618,7 +624,9 @@ weighted.fitting <- FALSE
 # Boolean variable which determines if a postscript (and corresponding .dat) file
 # which contains a plot of the max of mins values vs the prob of unobserved.
 write.max.of.mins.postscript <- FALSE
-
+# Variable that determines which max.RMSD deviations are considered outliers and
+# are adjusted.
+max.RMSD.outlier.cutoff <- 30
 
 # Find out the platform the program runs on.
 os <- .Platform$OS.type
@@ -691,24 +699,10 @@ if (os == 'windows') {
 
 # Determine if the values are space or tab delimited and after that if the first
 # character is the delimiter or not.
-tab.dlm <- try(scan(input.file, nlines=1 + blank.rows, sep='\t', quiet=T),
-               silent=T)
-if (length(grep('error', tab.dlm, ignore.case=T))) {
-  nofcols <- length(scan(input.file, nlines=1 + blank.rows, sep=' ', quiet=T))
-  tab.dlm <- 0
-} else {
-  nofcols <- length(scan(input.file, nlines=1 + blank.rows, sep='\t', quiet=T))
-  tab.dlm <- 1
-}
+nofcols <- length(scan(input.file, nlines=1 + blank.rows, quiet=T))
 
-if (tab.dlm == 0) {
-  if (is.na(scan(input.file, nlines=1+blank.rows, sep=' ', quiet=T)[1]) == T) {
-    nofcols <- nofcols - 1
-  }
-} else {
-  if (is.na(scan(input.file, nlines=1+blank.rows, sep='\t', quiet=T)[1]) == T) {
-    nofcols <- nofcols - 1
-  }
+if (is.na(scan(input.file, nlines=1+blank.rows, quiet=T)[1]) == T) {
+  nofcols <- nofcols - 1
 }
 
 # Dimension checks. Abort / Warn on failure.
@@ -882,6 +876,16 @@ if (count.warnings == 0) {
 rm(max.rmsd, matrix.length, dev, count.warnings,
    symmetry.errors.i, symmetry.errors.j)
 
+# Determine the RMSD step variable. For more info review the comments of the
+# function that is called.
+rmsd.step <- DetermineRmsdStep(rmsd.matrix, min.rmsd, rmsd.step.iterations)
+
+if (rmsd.step == F) {
+  cat('\nIs this a binary matrix ?\n', sep='')
+  cat(matrix.error.msg)
+  stop()
+}
+
 # Determine the max of mins for the original matrix, ie for a subsampling factor
 # of 1. Review the comments of CreateSubmatrix for an explanation of how this
 # calculation is performed. The reasoning behind this analysis is that the max
@@ -899,10 +903,6 @@ for (i in 1:nofrows) {
 
 max.of.mins[1]      <- max(maxs.of.mins)
 max.of.mins.devs[1] <- NA
-
-# Determine the RMSD step variable. For more info review the comments of the
-# function that is called.
-rmsd.step <- DetermineRmsdStep(rmsd.matrix, min.rmsd, rmsd.step.iterations)
 
 max.rmsds     <- vector()
 max.rmsd.devs <- vector()
@@ -941,6 +941,26 @@ for (i in 1:nofsamplings) {
   if (samplings[i] %% 200 == 0) {
     sampling.cutoff <- samplings[i] / 2
 
+    if (samplings[i] == 200) {
+      deviations.corrected <- vector()
+      
+      non.NA.deviations <- max.rmsd.devs[!is.na(max.rmsd.devs)]
+      mean.deviation <- mean(non.NA.deviations)
+      
+      min.deviation.above.cutoff <- min(non.NA.deviations[
+        which(mean.deviation / non.NA.deviations < max.RMSD.outlier.cutoff)])
+      
+      for (j in 1:i) {
+        if (is.na(max.rmsd.devs[j]) == TRUE
+            || mean.deviation / max.rmsd.devs[j] >= max.RMSD.outlier.cutoff) {
+          max.rmsd.devs[j] <- min.deviation.above.cutoff
+          deviations.corrected[length(deviations.corrected) + 1] <- j
+        }
+      }
+      
+      rm(non.NA.deviations, mean.deviation, min.deviation.above.cutoff)
+    }
+
     reached.convergence <- PerformNonLinearFitting(
       samplings[1:i], max.rmsds, max.of.mins, max.rmsd.devs, max.of.mins.devs)
 
@@ -958,24 +978,12 @@ for (i in 1:nofsamplings) {
   }
 }
 
-max.rmsd.variances    <- max.rmsd.devs^2
-max.of.mins.variances <- max.of.mins.devs^2
-
-max.rmsd.min.var <- min(max.rmsd.variances[which(max.rmsd.variances > 0)])
-max.mins.min.var <- min(max.of.mins.variances[which(max.of.mins.variances > 0)])
+max.rmsd.variances    <- max.rmsd.devs ^ 2
+max.of.mins.variances <- max.of.mins.devs ^ 2
 
 # Update the nofsamplings variable because the number of sampling points may
 # have changed.
 nofsamplings <- length(samplings)
-
-for (i in 1:nofsamplings) {
-  if (is.na(max.rmsd.variances[i]) == T || max.rmsd.variances[i] == 0) {
-    max.rmsd.variances[i]    <- max.rmsd.min.var
-  }
-  if (is.na(max.of.mins.variances[i]) == T || max.of.mins.variances[i] == 0) {
-    max.of.mins.variances[i] <- max.mins.min.var
-  }
-}
 
 if (weighted.fitting == T) {
 custom.regressionA <- nlsLM(max.rmsds ~
@@ -1019,12 +1027,20 @@ b2 <- summary(custom.regressionB)$coefficients[3]
 # than a0, ie at which point the max RMSDs level off. This point is then used to
 # determine which is the smallest sampling that can be used whose max RMSD is
 # greater than a0.
-max.rmsd.devs[1] <- 0  # This is so that the else if check below is possible
 
 if (reached.convergence == T) {
   if (went.past.200 == FALSE) {
     cat('   OK\n')
   }
+  
+  if (length(deviations.corrected)) {
+    for (i in 1:nofsamplings) {
+      if (i %in% deviations.corrected && i != 1) {
+        cat(sprintf("   Caution : weight correction applied for s=%5d\n", i))
+      }
+    }
+  }
+  
   cat('6. Calculating probability curve ...')
 
   for (i in 1:nofsamplings) {
@@ -1085,7 +1101,6 @@ if (reached.convergence == T) {
   cat('            OK\n')
 }
 
-max.rmsd.devs[1] <- NA  # Reversing the assignment of zero.
 if (reached.convergence == T) {
   cat('7. Writing files ...')
 } else {
@@ -1292,7 +1307,7 @@ rm(ComputeClusters, DetermineMinLength, DetermineRmsdStep, CreateSubmatrix,
    results, min.rmsd, nofcols, rmsd.matrix, file.name, rmsd.step, maxs.of.mins,
    max.of.mins, sorted, temp.file.var, a0, a1, a2, b0, b1, b2, blank.rows,
    custom.regressionA, custom.regressionB, errors, header.test, sigma.factor,
-   matrix.error.msg, max.mins.min.var, max.of.mins.devs, max.of.mins.variances,
-   max.rmsd.devs, max.rmsd.min.var, max.rmsd.variances, max.rmsds,
-   tab.dlm, samplings, nls.iter, rmsd.step.iterations, sampling.cutoff,
-   nofsamplings, count.dots, weighted.fitting)
+   matrix.error.msg, max.of.mins.devs, max.of.mins.variances,
+   max.rmsd.devs, max.rmsd.variances, max.rmsds,
+   samplings, nls.iter, rmsd.step.iterations, sampling.cutoff, nofsamplings,
+   count.dots, weighted.fitting)

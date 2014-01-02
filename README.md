@@ -4,8 +4,8 @@ Good_Turing.R - Application of Good-Turing statistics to quantify convergence of
 
 # DESCRIPTION
 
-**A preprint of a working draft of a paper presenting the method can be obtained from [arXiv.org]
-(http://arxiv.org/abs/1309.1108).**
+**A paper describing the method and the type of results obtained from
+its application is available from [JCIM](http://dx.doi.org/10.1021/ci4005817).**
 
 Good_Turing.R is an [R](http://www.r-project.org/) script which applies Good-Turing statistics on
 RMSD matrices of macromolecular dynamics simulation trajectories, with the purpose of quantifying

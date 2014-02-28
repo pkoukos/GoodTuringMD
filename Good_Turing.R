@@ -1,6 +1,6 @@
 ################################################################################
 ##                                                                            ##
-## Copyright (c) 2013, Panagiotis I. Koukos                                   ##
+## Copyright (c) 2013 - 2014, Panagiotis I. Koukos                            ##
 ## All rights reserved.                                                       ##
 ##                                                                            ##
 ## Redistribution and use in source and binary forms, with or without         ##
@@ -31,8 +31,21 @@
 ################################################################################
 ##                                                                            ##
 ## Name        : Good_Turing.R                                                ##
-## Version     : 0.0.4.                                                       ##
-## Changes     : 0.0.4. December 2013.                                        ##
+## Version     : 0.1.                                                         ##
+## Changes     : 0.1. February 2014.                                          ##
+##               This is the first update after the publication of the paper  ##
+##               describing the method utilised by the program in the Journal ##
+##               of Chemical Information and Modeling                         ##
+##               ( http://pubs.acs.org/doi/abs/10.1021/ci4005817 ), hence the ##
+##               change in the version numbering scheme. The idea is that     ##
+##               through the wider exposure the program received in combination#
+##               with the absence of emails informing me of its shortcomings or#
+##               failures, i now consider it stable enough to bump it to 0.1. ##
+##               Introduced a check for the presence of outliers among the RMSD#
+##               values of the superdiagonal of the provided matrix, as a means#
+##               of detecting badly performed concatenation of trajectories.  ##
+##                                                                            ##
+##               0.0.4. December 2013.                                        ##
 ##               Introduced the max.RMSD.outlier.cutoff variable which modifies#
 ##               the standard deviation of a max.rmsd which is found to be 30 ##
 ##               times smaller than the average deviation. The value assigned ##
@@ -43,7 +56,8 @@
 ##               Fixed a bug that occured when two or more whitespace chars   ##
 ##               ( ie spaces or tabs ) were used to separate the values of the##
 ##               RMSD matrix.                                                 ##
-## Changes     : 0.0.3. October 2013.                                         ##
+##                                                                            ##
+##               0.0.3. October 2013.                                         ##
 ##               Added CalculateMaxofMinsProbabilities function which allows  ##
 ##               the calculation of the probability of unobserved species in a##
 ##               that doesn't utilise the hierarchical clustering techniques  ##
@@ -62,17 +76,21 @@
 ##               can be found in the TAR along with the other results. If it is#
 ##               TRUE then the old P_unobserved files are moved to the TAR and##
 ##               these files are presented in the current working directory.  ##
+##                                                                            ##
 ##               0.0.2. October 2013.                                         ##
 ##               Extended the max sampling factor to 10.000. The new function ##
 ##               PerformNonLinearFitting tests for convergence and if it isn't##
 ##               reached with a sampling factor smaller than or equal to 200, ##
 ##               the sampling factors are increased by 200 up to 10.000.      ##
+##                                                                            ##
 ##               0.0.1. September 2013.                                       ##
 ##               Initial release.                                             ##
+##                                                                            ##
 ## Input       : This program expects an RMSD matrix as input. The matrix must##
 ##               be square, ie it has to have the same number of lines and    ##
 ##               columns, and symmetrical. Columns have to be separated by    ##
 ##               whitespace (spaces, tabs, etc. )                             ##
+##                                                                            ##
 ## Output      : Successful completion of the program results in two files    ##
 ##               being produced :                                             ##
 ##               good_turing.<file.name>.prob.of.unobserved_vs_RMSD.dat and   ##
@@ -84,6 +102,7 @@
 ##               good_turing.<file.name>.max_of_mins.dat                      ##
 ##               good_turing.<file.name>.max_of_mins.eps                      ##
 ##               For additional info about these files read the comments below##
+##                                                                            ##
 ## Description : The program loads the matrix and performs several checks on  ##
 ##               the data in order to determine whether it is suitable for the##
 ##               main analysis, which results in the creation of the two files##
@@ -171,7 +190,7 @@ DetermineRmsdStep <- function(my.matrix, init.rmsd, nofpoints) {
 # Returns :
 #   A numeric variable which is the rmsd.step to be used in the above function.
   hc <- hclust(as.dist(my.matrix), method="complete")
-  
+
   clusters            <- as.vector(cutree(hc, h=0))
   cluster.frequencies <- cbind(Frequency=sort(table(clusters)))
   if (length(which(cluster.frequencies == 1)) == 0) {
@@ -290,9 +309,9 @@ PerformNonLinearFitting <- function(samplings, rmsds, mins, rmsd.devs,
 
   # The a0 variable is the RMSD at which the max RMSDs reach a plateau.
   a0 <- summary(max.rmsd.fit)$coefficients[1]
-  
+
   cutoff <- samplings[length(samplings)] / 2
-  
+
   rmsd.devs[1] <- 0
   for (i in 1:length(samplings)) {
   # cat('Sampling is', samplings[i], 'AO is', a0,
@@ -331,7 +350,7 @@ CalculateMaxofMinsProbabilities <- function(rmsds, probabilities) {
 # Determine the probability of unobserved species using an alternative method to
 # the one used in the ComputeClusters function.
 # Args :
-# rmsds         : The RMSDs used for the determination of the probability of 
+# rmsds         : The RMSDs used for the determination of the probability of
 #                 unobserved species as determined by the CreateSubmatrix
 #                 subroutine.
 # probabilities : The probabilities of unobserved species as determined by the
@@ -356,14 +375,14 @@ CalculateMaxofMinsProbabilities <- function(rmsds, probabilities) {
   for (j in 1:nofsamplings) {
     max.of.mins.results[[j]] <- sort(max.of.mins.results[[j]])
   }
-  
+
   max.rmsd     <- 0
   for (j in 1:nofsamplings) {
     if (max.rmsd < max.of.mins.results[[j]][nofpoints]) {
       max.rmsd <- max.of.mins.results[[j]][nofpoints]
     }
   }
-      
+
   for (j in 1:nofpoints) {
     temp.max.of.mins <- vector()
     max.of.mins.probabilities[j] <- (nofpoints - j + 1) / nofpoints
@@ -374,7 +393,7 @@ CalculateMaxofMinsProbabilities <- function(rmsds, probabilities) {
     max.of.mins.means[j] <- mean(temp.max.of.mins)
     max.of.mins.devs[j]  <- sd(temp.max.of.mins)
   }
-  
+
   write.table(cbind(round(max.of.mins.means, 4),
                     round(max.of.mins.probabilities, 4),
                     round(max.of.mins.devs, 4)),
@@ -388,7 +407,7 @@ CalculateMaxofMinsProbabilities <- function(rmsds, probabilities) {
 
   postscript(file=paste('good_turing.', file.name,
                         '.P_unobserved_vs_RMSD_mins_based.eps', sep=''))
-                        
+
   max.of.mins.array <- matrix(nrow=nofpoints, ncol=nofsamplings)
 
   for (j in 1:nofsamplings) {
@@ -408,7 +427,7 @@ CalculateMaxofMinsProbabilities <- function(rmsds, probabilities) {
     lines(max.of.mins.results[[j]],
           max.of.mins.probabilities,
           type='p', col='darkgrey', cex=0.5)
-    
+
     max.of.mins.array[, j] <- max.of.mins.results[[j]]
   }
 
@@ -480,9 +499,9 @@ CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
           sorted               <- sort(new.matrix[j, ])
           temp.maxs.of.mins[j] <- sorted[2]
         }
-        
+
         list.of.mins[[i]] <- temp.maxs.of.mins
-        
+
         temp.max.of.mins[i] <- max(temp.maxs.of.mins)
       }
     }
@@ -557,7 +576,7 @@ CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
   }
 
   dev.off()
-  
+
   CalculateMaxofMinsProbabilities(
     results.x.final,
     results.y.final)
@@ -627,6 +646,12 @@ write.max.of.mins.postscript <- FALSE
 # Variable that determines which max.RMSD deviations are considered outliers and
 # are adjusted.
 max.RMSD.outlier.cutoff <- 30
+# Variables that determine if the check for badly concatenated trajectories will
+# be performed and the cutoff values for the check.
+bad.cat.check  <- T
+bad.cat.cutoff <- 7  # That many deviations away from mean.
+bad.cat.number <- 7  # How many instances of the above cutoff trigger the warning
+                     # message.
 
 # Find out the platform the program runs on.
 os <- .Platform$OS.type
@@ -872,6 +897,35 @@ if (count.warnings == 0) {
   rm(dif)
 }
 
+# Check for badly concatenated trajectories.
+if (bad.cat.check == T) {
+  bad.cat.msg <- FALSE
+
+  temp.mean  <- mean(diag(rmsd.matrix[-nrow(rmsd.matrix),-1]))
+  temp.dev   <- sd(diag(rmsd.matrix[-nrow(rmsd.matrix),-1]))
+  temp.rmsds <- diag(rmsd.matrix[-nrow(rmsd.matrix),-1])
+
+  devs.away  <- vector()
+  bad.cat.counter <- 0
+
+  for (i in 1: (nofrows - 1)) {
+    devs.away[i] <- (temp.rmsds[i] - temp.mean) / temp.dev
+
+    if (devs.away[i] >= bad.cat.cutoff) {
+      bad.cat.counter <- bad.cat.counter + 1
+    }
+  }
+
+  if (bad.cat.counter > 0 && bad.cat.counter <= bad.cat.number) {
+    bad.cat.msg <- TRUE
+  }
+
+  bad.cat.matrix <- matrix(cbind(temp.rmsds, devs.away), ncol=2)
+
+  rm(temp.mean, temp.dev, temp.rmsds, devs.away, bad.cat.counter,
+     bad.cat.cutoff, bad.cat.number)
+}
+
 # All checks successful. Proceed normally.
 rm(max.rmsd, matrix.length, dev, count.warnings,
    symmetry.errors.i, symmetry.errors.j)
@@ -881,7 +935,9 @@ rm(max.rmsd, matrix.length, dev, count.warnings,
 rmsd.step <- DetermineRmsdStep(rmsd.matrix, min.rmsd, rmsd.step.iterations)
 
 if (rmsd.step == F) {
-  cat('\nIs this a binary matrix ?\n', sep='')
+  cat('\nIs this a binary matrix ? Or, maybe, you  obtained\n',
+      'the matrix  by  concatenating  trajectories  whose\n',
+      'optimal sampling factors were larger than 1 ?\n\n', sep='')
   cat(matrix.error.msg)
   stop()
 }
@@ -942,14 +998,16 @@ for (i in 1:nofsamplings) {
     sampling.cutoff <- samplings[i] / 2
 
     if (samplings[i] == 200) {
+
+      # correction of deviations
       deviations.corrected <- vector()
-      
+
       non.NA.deviations <- max.rmsd.devs[!is.na(max.rmsd.devs)]
       mean.deviation <- mean(non.NA.deviations)
-      
+
       min.deviation.above.cutoff <- min(non.NA.deviations[
         which(mean.deviation / non.NA.deviations < max.RMSD.outlier.cutoff)])
-      
+
       for (j in 1:i) {
         if (is.na(max.rmsd.devs[j]) == TRUE
             || mean.deviation / max.rmsd.devs[j] >= max.RMSD.outlier.cutoff) {
@@ -957,7 +1015,7 @@ for (i in 1:nofsamplings) {
           deviations.corrected[length(deviations.corrected) + 1] <- j
         }
       }
-      
+
       rm(non.NA.deviations, mean.deviation, min.deviation.above.cutoff)
     }
 
@@ -1032,7 +1090,7 @@ if (reached.convergence == T) {
   if (went.past.200 == FALSE) {
     cat('   OK\n')
   }
-  
+
   if (length(deviations.corrected)) {
     for (i in 1:nofsamplings) {
       if (i %in% deviations.corrected && i != 1) {
@@ -1040,12 +1098,12 @@ if (reached.convergence == T) {
       }
     }
   }
-  
+
   cat('6. Calculating probability curve ...')
 
   for (i in 1:nofsamplings) {
     # If the sampling exceeds sampling.cutoff, then the data are deemed as
-    # unsuitable for prob. of unobserved species vs RMSD analysis due to the 
+    # unsuitable for prob. of unobserved species vs RMSD analysis due to the
     # very small size of the resulting matrices [for example, if the value of
     # the sampling.cutoff is 100, the matrices would be (1/100)th of the original].
     if (samplings[i] >= sampling.cutoff) {
@@ -1097,7 +1155,7 @@ if (reached.convergence == T) {
       break
     }
   }
-  
+
   cat('            OK\n')
 }
 
@@ -1114,68 +1172,75 @@ if (write.max.of.mins.postscript == TRUE) {
                          file.name,
                          '.P_unobserved_vs_RMSD.dat',
                          sep='')
-  
+
   temp.eps.name <- paste('good_turing.',
                          file.name,
                          '.P_unobserved_vs_RMSD.eps',
                          sep='')
-  
+
   file.rename(temp.dat.name,
               paste('good_turing.',
                     file.name,
                     '/',
                     temp.dat.name,
                     sep=''))
-                    
+
   file.rename(temp.eps.name,
               paste('good_turing.',
                     file.name,
                     '/',
                     temp.eps.name,
                     sep=''))
-                    
+
   rm(temp.dat.name, temp.eps.name)
 } else if (reached.convergence == T) {
   temp.dat.name <- paste('good_turing.',
                          file.name,
                          '.P_unobserved_vs_RMSD_mins_based.dat',
                          sep='')
-  
+
   temp.samplings.name <- paste('good_turing.',
                                file.name,
                                '.RMSD_mins_samplings.dat',
                                sep='')
-  
+
   temp.eps.name <- paste('good_turing.',
                          file.name,
                          '.P_unobserved_vs_RMSD_mins_based.eps',
                          sep='')
-  
+
   file.rename(temp.dat.name,
               paste('good_turing.',
                     file.name,
                     '/',
                     temp.dat.name,
                     sep=''))
-                    
+
   file.rename(temp.samplings.name,
               paste('good_turing.',
                     file.name,
                     '/',
                     temp.samplings.name,
                     sep=''))
-                    
+
   file.rename(temp.eps.name,
               paste('good_turing.',
                     file.name,
                     '/',
                     temp.eps.name,
                     sep=''))
-                    
+
   rm(temp.dat.name, temp.samplings.name, temp.eps.name)
 }
 
 setwd(paste('good_turing.', file.name, sep=''))
+
+if (bad.cat.check == T) {
+  write.table(bad.cat.matrix, file='max_rmsd_ss1_dist.dat',
+              col.names=F, row.names=F)
+
+  rm(bad.cat.matrix)
+}
 
 write.table(round(cbind(samplings, max.rmsds, max.rmsd.devs), 4),
             file=paste('good_turing.', file.name, '.max_rmsds.dat', sep=''),
@@ -1277,7 +1342,7 @@ if (reached.convergence == FALSE) {
 
     cat('approximately ', sprintf(paste("%.1f  +-  %.", j-2, "f", sep=''),
         max.of.mins[i], max.of.mins.devs[i]), sep='')
- 
+
     if (j - 2 == 1) {
       cat('  Angstrom  (RMSD)  from\n',
           'those already observed.', sep='')
@@ -1301,6 +1366,23 @@ if (reached.convergence == FALSE) {
 }
 
 cat('\n==================================================\n\n\n')
+
+if (bad.cat.check == TRUE && bad.cat.msg == TRUE) {
+  cat('__________________________________________________\n\n',
+      'WARNING  :  Is  this   a  merged  ( concatenated )\n',
+      'trajectory ? If yes, it appears  likely  that  the\n',
+      'individual trajectories are sampled so finely that\n',
+      'merging   them   invalidates   the   Good - Turing\n',
+      'procedure.  You  should  sub-sample  the  original\n',
+      'trajectories  before merging  them in such  a  way\n',
+      'that the optimal sampling factor for them ( before\n',
+      'merging) is ~1.\n',
+      '__________________________________________________\n', sep='')
+
+  cat('\n==================================================\n\n\n')
+
+  rm(bad.cat.check, bad.cat.msg)
+}
 
 rm(ComputeClusters, DetermineMinLength, DetermineRmsdStep, CreateSubmatrix,
    DetermineFirstDiagonalMaxRmsd, DetermineIfBinary, i, input.file, os, nofrows,

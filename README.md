@@ -1,3 +1,8 @@
+# **INSTALL**
+
+Download [this](https://raw.githubusercontent.com/pkoukos/GoodTuringMD/master/Good_Turing.R) file and
+follow the instructions [below](https://github.com/pkoukos/GoodTuringMD#0-extremely-quick-start-guide).
+
 # **NAME**
 
 Good_Turing.R - Application of Good-Turing statistics to quantify convergence of biomolecular simulations.

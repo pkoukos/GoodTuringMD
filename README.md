@@ -3,7 +3,15 @@
 1. [Installation Instructions](https://github.com/pkoukos/GoodTuringMD#install)
 2. [Name](https://github.com/pkoukos/GoodTuringMD#name)
 3. [Description](https://github.com/pkoukos/GoodTuringMD#description)
-  i. [Extremely quick start guide](
+  1. [Extremely quick start guide](https://github.com/pkoukos/GoodTuringMD#i-extremely-quick-start-guide)
+  2. [Obtain and install R](https://github.com/pkoukos/GoodTuringMD#ii-obtain-and-install-r)
+  3. [Launch R](https://github.com/pkoukos/GoodTuringMD#iii-launch-r)
+  4. [Launch the script](https://github.com/pkoukos/GoodTuringMD#iv-launch-the-script)
+  5. [First time run](https://github.com/pkoukos/GoodTuringMD#v-first-time-run)
+  6. [The analysis](https://github.com/pkoukos/GoodTuringMD#vi-the-analysis)
+  7. [Troubleshooting](https://github.com/pkoukos/GoodTuringMD#vii-troubleshooting)
+4. [Support](http://groups.google.com/group/good-turing-md "GoodTuringMD Mailing List")
+5. [Author](https://github.com/pkoukos/GoodTuringMD#author)
 
 
 # **1. INSTALL**
@@ -145,8 +153,11 @@ however any matrix that meets the following criteria is acceptable :
 Runtime errors associated with bad input are accompanied by a message explaining exactly what is wrong with the
 data and the above message.
 
+# **4. Support**
 
-# **AUTHOR**
+You can always submit your questions/bug reports etc. at the [mailing list](http://groups.google.com/group/good-turing-md "GoodTuringMD Mailing List") of the program.
+
+# **5. AUTHOR**
 
 Good_Turing.R has been developed by Panagiotis Koukos, under the supervision of 
 [Prof. Nicholas M. Glykos](http://utopia.duth.gr/~glykos/) at the 

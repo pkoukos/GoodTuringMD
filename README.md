@@ -1,13 +1,21 @@
-# **INSTALL**
+# **CONTENTS**
+
+1. [Installation Instructions](https://github.com/pkoukos/GoodTuringMD#install)
+2. [Name](https://github.com/pkoukos/GoodTuringMD#name)
+3. [Description](https://github.com/pkoukos/GoodTuringMD#description)
+  i. [Extremely quick start guide](
+
+
+# **1. INSTALL**
 
 Download [this](https://raw.githubusercontent.com/pkoukos/GoodTuringMD/master/Good_Turing.R) file and
 follow the instructions [below](https://github.com/pkoukos/GoodTuringMD#0-extremely-quick-start-guide).
 
-# **NAME**
+# **2. NAME**
 
 Good_Turing.R - Application of Good-Turing statistics to quantify convergence of biomolecular simulations.
 
-# DESCRIPTION
+# **3. DESCRIPTION**
 
 **A paper describing the method and the type of results obtained from
 its application is available from [JCIM](http://dx.doi.org/10.1021/ci4005817).**
@@ -20,9 +28,9 @@ Windows, Mac and *nix. For more info on R availability see [here]
 
 The following steps are required in order to run the script :
 
-### 0. Extremely quick start guide 
+### i. Extremely quick start guide 
 
-For a more detailed overview skip this section and begin your reading at 1. If you feel confident read on.
+For a more detailed overview skip this section and begin your reading at ii. If you feel confident read on.
 
 If you already have the R package installed and you work with unix (GNU/Linux-MacOSX) then
 just place the Good_Turing.R program to the directory containing your RMSD matrix and then
@@ -36,29 +44,29 @@ from the unix shell do the following :
 5. Type the name of the file containing the RMSD matrix when asked.
 6. Hold your breath.
 
-The expected format of the RMSD matrix is described in section 6 below.
+The expected format of the RMSD matrix is described in section vii below.
 
-### 1. Obtain and install R
+### ii. Obtain and install R
 
 If you are on a windows machine follow the link provided above to obtain the R installer for your platform.
 
 If you are on a Linux/GNU machine you have the option of compiling R from the source, or using pre-compiled
 binaries for your OS. For Debian like systems something like : `sudo apt-get install r-base` should do the trick.
 
-### 2. Launch R
+### iii. Launch R
 
 Windows users should be able to launch R through Start > All Programs > R > R executable or a  relevant link.
 
 Linux/GNU users should be able to launch R through their terminal emulator of choice simply by typing `R`.
 
-### 3. Launch the script
+### iv. Launch the script
 
 Once in the R environment users should switch to the directory where the script is located using the R command
 `setwd()`, enclosing the path in the parentheses with single or double quotes and use the command 
 `source('Good_Turing.R')`. Alternatively the `source()` command can be used without switcing directories but the
 relative path to the script must be provided in the parentheses enclosed by single or double quotes.
 
-### 4. First time run
+### v. First time run
 
 Every time the script is executed it performs a check on the system library in order to determine whether its
 dependencies are met. The two dependencies(v0.1) of the program are the packages :
@@ -82,7 +90,7 @@ installation so the user will be asked to specify these after issuing the comman
 for GNU/Linux users : If you would like to install the packages to a system wide location such as /usr/local/
 should launch R with administrative privileges(ie `sudo R`), otherwise a personal library will be used.
 
-### 5. The analysis
+### vi. The analysis
 
 After the program has been launched and provided that the dependencies are met the program proceeds to evaluate
 the RMSD matrix for compatibility(see the following section for details). After it has been determined that the
@@ -108,7 +116,7 @@ the files archived in the tar. These are :
 The data in these files is analysed in order to determine whether the length of the trajectory suffices for
 quantifying convergence.
 
-### 6. Troubleshooting
+### vii. Troubleshooting
 The program has been extensively tested with matrices produced with trajectories of the PDB/PSF-DCD world,
 however any matrix that meets the following criteria is acceptable :
     

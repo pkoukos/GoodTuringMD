@@ -155,7 +155,7 @@ data and the above message.
 
 # **4. Support**
 
-You can always submit your questions/bug reports etc. at the [mailing list](http://groups.google.com/group/good-turing-md "GoodTuringMD Mailing List") of the program.
+You can always submit your questions/bug reports etc. and receive mailing list support at the [google group](http://groups.google.com/group/good-turing-md "GoodTuringMD Mailing List") of the program.
 
 # **5. AUTHOR**
 

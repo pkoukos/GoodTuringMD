@@ -1,8 +1,8 @@
 # **CONTENTS**
 
-1. [Installation Instructions](https://github.com/pkoukos/GoodTuringMD#install)
-2. [Name](https://github.com/pkoukos/GoodTuringMD#name)
-3. [Description](https://github.com/pkoukos/GoodTuringMD#description)
+1. [Installation Instructions](https://github.com/pkoukos/GoodTuringMD#1-install)
+2. [Name](https://github.com/pkoukos/GoodTuringMD#2-name)
+3. [Description](https://github.com/pkoukos/GoodTuringMD#3-description)
   1. [Extremely quick start guide](https://github.com/pkoukos/GoodTuringMD#i-extremely-quick-start-guide)
   2. [Obtain and install R](https://github.com/pkoukos/GoodTuringMD#ii-obtain-and-install-r)
   3. [Launch R](https://github.com/pkoukos/GoodTuringMD#iii-launch-r)
@@ -10,7 +10,7 @@
   5. [First time run](https://github.com/pkoukos/GoodTuringMD#v-first-time-run)
   6. [The analysis](https://github.com/pkoukos/GoodTuringMD#vi-the-analysis)
   7. [Troubleshooting](https://github.com/pkoukos/GoodTuringMD#vii-troubleshooting)
-4. [Support](http://groups.google.com/group/good-turing-md "GoodTuringMD Mailing List")
+4. [Support](https://github.com/pkoukos/GoodTuringMD#4-support)
 5. [Author](https://github.com/pkoukos/GoodTuringMD#author)
 
 

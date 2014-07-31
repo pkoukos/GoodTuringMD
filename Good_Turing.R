@@ -250,7 +250,7 @@ DetermineIfBinary <- function(filepath, max=1000) {
 #   max      : Number of characters to read.
 # Returns :
 #   TRUE if a file is binary, FALSE otherwise.
-  f <- file(filepath, "rb", raw=TRUE)
+  f <- file(filepath, "rb")
   b <- readBin(f, "int", max, size=1, signed=FALSE)
   close(f)
   return(max(b)>128)

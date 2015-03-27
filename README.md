@@ -17,7 +17,7 @@
 # **1. INSTALL**
 
 Download [this](https://raw.githubusercontent.com/pkoukos/GoodTuringMD/master/Good_Turing.R) file and
-follow the instructions [below](https://github.com/pkoukos/GoodTuringMD#0-extremely-quick-start-guide).
+follow the instructions [below](https://github.com/pkoukos/GoodTuringMD#i-extremely-quick-start-guide).
 
 # **2. NAME**
 

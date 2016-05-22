@@ -1,6 +1,6 @@
 ################################################################################
 ##                                                                            ##
-## Copyright (c) 2013 - 2014, Panagiotis I. Koukos                            ##
+## Copyright (c) 2013 - 2016, Panagiotis I. Koukos                            ##
 ## All rights reserved.                                                       ##
 ##                                                                            ##
 ## Redistribution and use in source and binary forms, with or without         ##

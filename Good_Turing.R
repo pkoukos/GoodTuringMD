@@ -582,8 +582,95 @@ CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
     results.y.final)
 }
 
+DetermineXPMDimensions <- function(input.line) {
+# Extract the dimensionality information from the XPM matrix file.
+# Args:
+#   input.line       : The line that contains the dimensionality information.
+  dimensions <- gsub('"', '', input.line)
+  dimensions <- gsub(',', '', dimensions)
+  dimensions <- strsplit(dimensions, '\\s+')
+  return(unlist(dimensions))
+}
+
+ProcessColourToRMSDMapping <- function(pairing.line) {
+# Process a single line of colour to RMSD mappings and return the relevant.
+# Args:
+#   pairing.line     : A single line of Colour -> RMSD value.
+  pairing.line <- gsub('"', '', pairing.line)
+  pairing.values <- unlist(strsplit(pairing.line, '\\s+'))
+  return(c(pairing.values[1], pairing.values[5]))
+}
+
+DetermineColourToRMSDMappings <- function(input.lines) {
+# Read the lines which contain the colour vlues and the numericl values to
+# which they correspond, store them in a hashtable-like structure and return
+# them to the caller.
+# Args:
+#   input.lines      : The lines that contain the information about the colour
+#                      to RMSD pairings.
+  colours <- c()
+  RMSD.values <- c()
+
+  for (input.line in input.lines) {
+    pairing <- ProcessColourToRMSDMapping(input.line)
+    colours <- c(colours, pairing[1])
+    RMSD.values <- c(RMSD.values, as.double(pairing[2]))
+  }
+
+  pairings <- RMSD.values
+  names(pairings) <- colours
+
+  return(pairings)
+}
+
 XPMtoNumericalMatrix <- function(path.to.matrix) {
-  return(F)
+# Transform the XPM formatted matrix to a numerical one which is what this
+# software expects as input. See the matrix.error.msg below for more info.
+# Args :
+#   path.to.matrix   : The path to the file as specified during startup.
+
+  # First look for the line which contains "static char * gv_xpm[]" while
+  # ignoring the comment lines.
+  file.connection <- file(path.to.matrix, "r")
+  oneLine <- readLines(file.connection, n=1)
+
+  while (length(grep("static char * gv_xpm[]", oneLine, fixed=T)) == 0) {
+    oneLine <- readLines(file.connection, n=1)
+  }
+
+  # When you find it grab the next line because it contains useful info. This
+  # is what that line contains: "13 13   6 1,", and the numbers mean: number of
+  # rows, number of columns, number of different RMSD values and bits which
+  # represent each colour. So the next n(in this case 6) rows need to be read
+  # and stored. At the end of each of those lines there is the numerical value
+  # that we need in a comment.
+  matrix.dimensions <- DetermineXPMDimensions(readLines(file.connection, n=1))
+
+  col.to.RMSD <- DetermineColourToRMSDMappings(
+    readLines(file.connection, n=as.integer(matrix.dimensions[3]))
+  )
+
+  # Since we made it this far it is time to start writing to the new matrix.
+  # Put it in the working directory and call it good_turing_RMSD.matrix.
+  RMSD.matrix <- file("good_turing_RMSD.matrix", "w")
+
+  for (input.line in readLines(file.connection)) {
+    if (substr(input.line, 1, 2) != '/*') {
+      input.line <- gsub('"', '', input.line)
+      input.line <- gsub(',', '', input.line)
+      input.line <- unlist(strsplit(input.line, ''))
+      data.to.write <- unname(sapply(input.line, function(x) col.to.RMSD[[x]]))
+      write(data.to.write,
+            file=RMSD.matrix,
+            append=T,
+            ncolumns=as.integer(matrix.dimensions[1])
+      )
+    }
+  }
+
+  close(RMSD.matrix)
+  close(file.connection)
+  return("good_turing_RMSD.matrix")
 }
 
 DetermineIfXPM <- function(path.to.file) {
@@ -693,6 +780,7 @@ os <- .Platform$OS.type
 
 # Interactive file selection.
 input.file <- file.choose()
+file.is.xpm <- F
 cat('\n\n==================================================\n')
 cat('1. Opening file for reading ...')
 
@@ -704,8 +792,15 @@ if (DetermineIfBinary(input.file) == T) {
   cat(matrix.error.msg)
   stop()
 } else if(DetermineIfXPM(input.file) == T) {
-  print("XPM indeed.")
-  stop()
+  # Use the newly created file instead of the XPM one.
+  cat('               INFO\n',
+      '\n**************************************************\n',
+      'Matrix  transformed to numerical format. The  file\n',
+      'can   be  found  in   the  CWD   under  the  name:\n',
+      '             good_turing_RMSD.matrix.\n',
+      '**************************************************\n\n', sep='')
+  input.file <- XPMtoNumericalMatrix(input.file)
+  file.is.xpm <- T
 } else {
   header.test <- try(scan(input.file, nmax=10, quiet=T), silent=T)
   if (length(grep('error', header.test, ignore.case=T))) {
@@ -747,7 +842,10 @@ if (length(temp.file.var) > 1) {
   }
 }
 
-cat('                 OK\n')
+if (file.is.xpm == F) {
+  cat('                 OK\n')
+}
+
 cat('2. Checking dimensions ...')
 if (os == 'windows') {
   nofrows    <- length(scan(input.file, what='raw', sep='\n', quiet=T))

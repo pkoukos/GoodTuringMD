@@ -582,6 +582,41 @@ CreateSubmatrix <- function(my.matrix, sampling, max.rmsd.calc,
     results.y.final)
 }
 
+XPMtoNumericalMatrix <- function(path.to.matrix) {
+  return(F)
+}
+
+DetermineIfXPM <- function(path.to.file) {
+# Check if the provided matrix is in GROMACS XPM format. Documentation on the
+# format itself can be found here: http://manual.gromacs.org/online/xpm.html
+# Args :
+#   path.to.file     : The path to the file as specified during startup.
+
+  # First check if the file ending is "xpm". If it assume that the matrix
+  # conforms to the standard specified in the page above and treat it as such.
+  library(tools)
+  file.extension <- file_ext(path.to.file)
+  if (tolower(file.extension) == "xpm") {
+    return(T)
+  }
+  # Failing that look for identifying information in the first ten lines of the
+  # file. First look for the "/* XPM */" header in the first line.
+  first.ten.lines <- readLines(input.file, n=10)
+  contains.XPM <- grep("XPM", first.ten.lines)
+  if(length(contains.XPM) >= 1) {
+    return(T)
+  }
+
+  # Finally look for the "static char" line and if that isn't found either
+  # give up.
+  contains.char <- grep("static char", first.ten.lines)
+  if(length(contains.char) >= 1) {
+    return(T)
+  }
+
+  return(F)
+}
+
 ################################################################################
 ##                                                                            ##
 ##                         Main part of the program                           ##
@@ -667,6 +702,9 @@ if (DetermineIfBinary(input.file) == T) {
       'It appears you  provided a binary  file. Aborting.\n',
       '**************************************************\n\n', sep='')
   cat(matrix.error.msg)
+  stop()
+} else if(DetermineIfXPM(input.file) == T) {
+  print("XPM indeed.")
   stop()
 } else {
   header.test <- try(scan(input.file, nmax=10, quiet=T), silent=T)
